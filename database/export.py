@@ -1,25 +1,46 @@
 """
-Экспорт данных из БД в различные форматы (JSON, CSV, Excel)
-Миграция данных из Excel в БД
+Data export and migration utilities.
+
+This module provides functionality for exporting profile data to various formats
+(JSON, CSV, Excel) and migrating legacy Excel data into the database.
 """
+
 import json
 import csv
+import logging
+from typing import Tuple
 import pandas as pd
 from openpyxl import load_workbook
-from datetime import datetime
+
 from database.models import get_db_manager, Person
 from database.operations import ProfileManager
 
+logger = logging.getLogger(__name__)
+
 
 class DataExporter:
-    """Экспорт данных из БД"""
+    """
+    Export profile data to various file formats.
 
-    def __init__(self):
+    Supports JSON, CSV, and Excel exports with configurable filtering.
+    """
+
+    def __init__(self) -> None:
+        """Initialize DataExporter with database connections."""
         self.db = get_db_manager()
         self.pm = ProfileManager()
 
-    def export_to_json(self, filename='export.json', active_only=True):
-        """Экспорт всех профилей в JSON"""
+    def export_to_json(self, filename: str = 'export.json', active_only: bool = True) -> int:
+        """
+        Export all profiles to JSON format.
+
+        Args:
+            filename: Output JSON file path
+            active_only: If True, export only active profiles
+
+        Returns:
+            Number of profiles exported
+        """
         profiles = self.pm.get_all_profiles(active_only=active_only)
 
         data = []
@@ -63,11 +84,20 @@ class DataExporter:
         with open(filename, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
-        print(f"✓ Экспортировано {len(data)} профилей в {filename}")
+        logger.info(f"Exported {len(data)} profiles to {filename}")
         return len(data)
 
-    def export_to_csv(self, filename='export.csv', active_only=True):
-        """Экспорт профилей в CSV (основная информация)"""
+    def export_to_csv(self, filename: str = 'export.csv', active_only: bool = True) -> int:
+        """
+        Export profiles to CSV format (summary information only).
+
+        Args:
+            filename: Output CSV file path
+            active_only: If True, export only active profiles
+
+        Returns:
+            Number of profiles exported
+        """
         profiles = self.pm.get_all_profiles(active_only=active_only)
 
         with open(filename, 'w', newline='', encoding='utf-8') as f:
@@ -96,11 +126,20 @@ class DataExporter:
                     person.scrape_count
                 ])
 
-        print(f"✓ Экспортировано {len(profiles)} профилей в {filename}")
+        logger.info(f"Exported {len(profiles)} profiles to {filename}")
         return len(profiles)
 
-    def export_to_excel(self, filename='export.xlsx', active_only=True):
-        """Экспорт профилей в Excel с использованием pandas"""
+    def export_to_excel(self, filename: str = 'export.xlsx', active_only: bool = True) -> int:
+        """
+        Export profiles to Excel format with multiple sheets.
+
+        Args:
+            filename: Output Excel file path
+            active_only: If True, export only active profiles
+
+        Returns:
+            Number of profiles exported
+        """
         profiles = self.pm.get_all_profiles(active_only=active_only)
 
         # Основная информация
@@ -149,25 +188,40 @@ class DataExporter:
 
         # Создаем Excel с несколькими листами
         with pd.ExcelWriter(filename, engine='openpyxl') as writer:
-            pd.DataFrame(main_data).to_excel(writer, sheet_name='Профили', index=False)
-            pd.DataFrame(exp_data).to_excel(writer, sheet_name='Опыт работы', index=False)
-            pd.DataFrame(edu_data).to_excel(writer, sheet_name='Образование', index=False)
+            pd.DataFrame(main_data).to_excel(writer, sheet_name='Profiles', index=False)
+            pd.DataFrame(exp_data).to_excel(writer, sheet_name='Experience', index=False)
+            pd.DataFrame(edu_data).to_excel(writer, sheet_name='Education', index=False)
 
-        print(f"✓ Экспортировано {len(profiles)} профилей в {filename}")
-        print(f"  - Профили: {len(main_data)}")
-        print(f"  - Опыт работы: {len(exp_data)}")
-        print(f"  - Образование: {len(edu_data)}")
+        logger.info(f"Exported {len(profiles)} profiles to {filename}")
+        logger.info(f"  - Profiles: {len(main_data)}, Experience: {len(exp_data)}, Education: {len(edu_data)}")
         return len(profiles)
 
 
 class DataMigrator:
-    """Миграция данных из Excel в БД"""
+    """
+    Migrate legacy data from Excel into the database.
 
-    def __init__(self):
+    Handles parsing and importing of profile data from Excel spreadsheets
+    with error handling and progress tracking.
+    """
+
+    def __init__(self) -> None:
+        """Initialize DataMigrator with ProfileManager."""
         self.pm = ProfileManager()
 
-    def migrate_from_excel(self, excel_file='data/linkedin_profiles.xlsx'):
-        """Мигрировать данные из существующего Excel файла в БД"""
+    def migrate_from_excel(self, excel_file: str = 'data/linkedin_profiles.xlsx') -> Tuple[int, int]:
+        """
+        Migrate data from Excel file to database.
+
+        Args:
+            excel_file: Path to Excel file containing profile data
+
+        Returns:
+            Tuple of (successful_migrations, errors)
+
+        Raises:
+            Exception: If Excel file cannot be read
+        """
         try:
             wb = load_workbook(excel_file)
             ws = wb.active
@@ -175,7 +229,7 @@ class DataMigrator:
             migrated = 0
             errors = 0
 
-            print(f"\nНачинаем миграцию из {excel_file}...")
+            logger.info(f"Starting migration from {excel_file}...")
 
             # Пропускаем заголовок
             for row in ws.iter_rows(min_row=2, values_only=True):
@@ -191,7 +245,7 @@ class DataMigrator:
                     educations_text = row[8] if len(row) > 8 else None
 
                     if not linkedin_url:
-                        print(f"  ⚠ Пропущен профиль {name}: нет LinkedIn URL")
+                        logger.warning(f"Skipped profile {name}: no LinkedIn URL")
                         continue
 
                     # Парсим опыт работы
@@ -269,16 +323,14 @@ class DataMigrator:
 
                 except Exception as e:
                     errors += 1
-                    print(f"  ✗ Ошибка при обработке строки: {e}")
+                    logger.error(f"Error processing row: {e}")
 
-            print(f"\n✓ Миграция завершена:")
-            print(f"  - Успешно: {migrated}")
-            print(f"  - Ошибок: {errors}")
+            logger.info(f"Migration completed: {migrated} successful, {errors} errors")
 
             return migrated, errors
 
         except Exception as e:
-            print(f"✗ Ошибка при миграции: {e}")
+            logger.error(f"Migration failed: {e}")
             raise
 
 

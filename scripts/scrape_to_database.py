@@ -1,12 +1,16 @@
 """
-LinkedIn Scraper с сохранением в базу данных
-Поддержка дедупликации и отслеживания изменений
+LinkedIn profile scraper with database integration.
+
+Scrapes LinkedIn profiles using Selenium and stores data in SQLite database
+with support for deduplication and change tracking.
 """
+
 import time
 import sys
 import os
+import logging
 
-# Добавляем путь к корню проекта
+# Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from linkedin_scraper import Person
@@ -16,25 +20,30 @@ from selenium.webdriver.chrome.options import Options
 from database.operations import ProfileManager
 from database.models import get_db_manager
 
+logger = logging.getLogger(__name__)
 
-def scrape_profile_to_db(profile_url, driver, pm, track_changes=True):
+
+def scrape_profile_to_db(profile_url: str, driver, pm: ProfileManager, track_changes: bool = True):
     """
-    Скрэйпить профиль и сохранить в БД
+    Scrape LinkedIn profile and save to database.
 
     Args:
-        profile_url: URL профиля LinkedIn
-        driver: Selenium WebDriver
+        profile_url: LinkedIn profile URL
+        driver: Selenium WebDriver instance
         pm: ProfileManager instance
-        track_changes: отслеживать изменения в истории
+        track_changes: Whether to track changes in profile history
+
+    Returns:
+        Person object if successful, None otherwise
     """
     try:
-        print(f"\nСкрэйпинг: {profile_url}")
+        print(f"\nScraping: {profile_url}")
 
-        # Скрэйпим профиль
+        # Scrape profile
         person = Person(profile_url, driver=driver, scrape=False)
         person.scrape(close_on_complete=False)
 
-        # Формируем данные для сохранения
+        # Prepare data for saving
         experiences = []
         if hasattr(person, 'experiences') and person.experiences:
             for exp in person.experiences:
@@ -70,31 +79,30 @@ def scrape_profile_to_db(profile_url, driver, pm, track_changes=True):
             'educations': educations
         }
 
-        # Сохраняем в БД
+        # Save to database
         saved_person = pm.save_profile(profile_data, track_changes=track_changes)
 
-        print(f"✓ Профиль сохранен в БД (ID: {saved_person.id})")
-        print(f"  - Имя: {saved_person.name}")
-        print(f"  - Компания: {saved_person.current_company}")
-        print(f"  - Опыт: {len(experiences)} мест работы")
-        print(f"  - Образование: {len(educations)} учебных заведений")
-        print(f"  - Количество скрэйпов: {saved_person.scrape_count}")
+        print(f"SUCCESS: Profile saved to database (ID: {saved_person.id})")
+        print(f"  - Name: {saved_person.name}")
+        print(f"  - Company: {saved_person.current_company}")
+        print(f"  - Experience: {len(experiences)} positions")
+        print(f"  - Education: {len(educations)} institutions")
+        print(f"  - Scrape count: {saved_person.scrape_count}")
 
         return saved_person
 
     except Exception as e:
-        print(f"✗ Ошибка при скрэйпинге {profile_url}: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"ERROR: Scraping failed for {profile_url}: {e}")
+        logger.exception("Scraping error")
         return None
 
 
 def main():
-    """Главная функция для скрэйпинга профилей"""
+    """Main function for scraping LinkedIn profiles."""
 
-    # Инициализируем БД
+    # Initialize database
     print("="*60)
-    print("ИНИЦИАЛИЗАЦИЯ СИСТЕМЫ")
+    print("SYSTEM INITIALIZATION")
     print("="*60)
 
     db = get_db_manager()
@@ -102,11 +110,11 @@ def main():
     pm = ProfileManager()
 
     stats = db.get_stats()
-    print(f"\nТекущая статистика БД:")
-    print(f"  - Профилей: {stats['total_persons']}")
-    print(f"  - Опыт работы: {stats['total_experiences']}")
-    print(f"  - Образование: {stats['total_educations']}")
-    print(f"  - Записей истории: {stats['total_history_records']}")
+    print(f"\nCurrent database statistics:")
+    print(f"  - Profiles: {stats['total_persons']}")
+    print(f"  - Experience records: {stats['total_experiences']}")
+    print(f"  - Education records: {stats['total_educations']}")
+    print(f"  - History records: {stats['total_history_records']}")
 
     # Setup Chrome
     chrome_options = Options()
@@ -117,23 +125,23 @@ def main():
 
     try:
         print("\n" + "="*60)
-        print("АВТОРИЗАЦИЯ В LINKEDIN")
+        print("LINKEDIN AUTHENTICATION")
         print("="*60)
-        print("1. Залогиньтесь в LinkedIn в открывшемся браузере")
-        print("2. У вас есть 60 секунд для логина")
-        print("3. Скрэйпинг начнется автоматически")
+        print("1. Log in to LinkedIn in the opened browser")
+        print("2. You have 60 seconds to complete login")
+        print("3. Scraping will begin automatically")
         print("="*60 + "\n")
 
-        # Открываем LinkedIn
+        # Open LinkedIn
         driver.get("https://www.linkedin.com/login")
 
-        # Ждем 60 секунд для ручного логина
-        print("Ожидание логина (60 секунд)...")
+        # Wait 60 seconds for manual login
+        print("Waiting for login (60 seconds)...")
         for i in range(60, 0, -10):
-            print(f"{i} секунд осталось...")
+            print(f"{i} seconds remaining...")
             time.sleep(10)
 
-        # Список профилей для скрэйпинга
+        # List of profiles to scrape
         profiles_to_scrape = [
             "https://www.linkedin.com/in/sultan-baisbekov-a079b4362/",
             "https://www.linkedin.com/in/nurbolot-piridinov/",
@@ -142,7 +150,7 @@ def main():
         ]
 
         print("\n" + "="*60)
-        print(f"НАЧИНАЕМ СКРЭЙПИНГ ({len(profiles_to_scrape)} профилей)")
+        print(f"STARTING SCRAPING ({len(profiles_to_scrape)} profiles)")
         print("="*60)
 
         successful = 0
@@ -158,38 +166,37 @@ def main():
             else:
                 failed += 1
 
-            # Небольшая пауза между профилями
+            # Brief pause between profiles
             if idx < len(profiles_to_scrape):
-                print("\nПауза 5 секунд перед следующим профилем...")
+                print("\nPausing 5 seconds before next profile...")
                 time.sleep(5)
 
-        # Итоговая статистика
+        # Final statistics
         print("\n" + "="*60)
-        print("ИТОГИ СКРЭЙПИНГА")
+        print("SCRAPING SUMMARY")
         print("="*60)
-        print(f"✓ Успешно: {successful}")
-        print(f"✗ Ошибок: {failed}")
-        print(f"📊 Всего обработано: {successful + failed}")
+        print(f"SUCCESS: Successful: {successful}")
+        print(f"ERROR: Failed: {failed}")
+        print(f"Total processed: {successful + failed}")
 
-        # Обновленная статистика БД
+        # Updated database statistics
         stats = db.get_stats()
-        print(f"\nОбновленная статистика БД:")
-        print(f"  - Профилей: {stats['total_persons']}")
-        print(f"  - Опыт работы: {stats['total_experiences']}")
-        print(f"  - Образование: {stats['total_educations']}")
-        print(f"  - Записей истории: {stats['total_history_records']}")
+        print(f"\nUpdated database statistics:")
+        print(f"  - Profiles: {stats['total_persons']}")
+        print(f"  - Experience records: {stats['total_experiences']}")
+        print(f"  - Education records: {stats['total_educations']}")
+        print(f"  - History records: {stats['total_history_records']}")
 
         print("\n" + "="*60)
-        print("Браузер закроется через 10 секунд...")
+        print("Browser will close in 10 seconds...")
         time.sleep(10)
 
     except Exception as e:
-        print(f"\nПроизошла критическая ошибка: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"\nCritical error occurred: {e}")
+        logger.exception("Critical error in main")
     finally:
         driver.quit()
-        print("\nБраузер закрыт.")
+        print("\nBrowser closed.")
 
 
 if __name__ == "__main__":

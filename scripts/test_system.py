@@ -89,17 +89,17 @@ exporter = DataExporter()
 try:
     # Экспорт в JSON
     count = exporter.export_to_json('test_export.json')
-    print(f"  ✓ JSON экспорт: {count} профилей")
+    print(f"  SUCCESS: JSON экспорт: {count} профилей")
 
     # Экспорт в CSV
     count = exporter.export_to_csv('test_export.csv')
-    print(f"  ✓ CSV экспорт: {count} профилей")
+    print(f"  SUCCESS: CSV экспорт: {count} профилей")
 
     # Экспорт в Excel
     count = exporter.export_to_excel('test_export.xlsx')
-    print(f"  ✓ Excel экспорт: {count} профилей")
+    print(f"  SUCCESS: Excel экспорт: {count} профилей")
 except Exception as e:
-    print(f"  ✗ Ошибка при экспорте: {e}")
+    print(f"  ERROR: Ошибка при экспорте: {e}")
 
 # 5. Тестирование дедупликации
 print("\n5. Тестирование дедупликации:")

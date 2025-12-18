@@ -1,134 +1,105 @@
 # LinkedIn Scraper Database System
 
-Полноценная система для скрэйпинга, хранения и анализа профилей LinkedIn с реляционной базой данных и веб-интерфейсом.
+Enterprise-grade LinkedIn profile scraping system with relational database storage and web interface.
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![SQLite](https://img.shields.io/badge/database-SQLite-green.svg)](https://www.sqlite.org/)
 [![Flask](https://img.shields.io/badge/web-Flask-lightgrey.svg)](https://flask.palletsprojects.com/)
 
-## 📋 Содержание
+## Overview
 
-- [Возможности](#возможности)
-- [Быстрый старт](#быстрый-старт)
-- [Структура проекта](#структура-проекта)
-- [Использование](#использование)
-- [Веб-интерфейс](#веб-интерфейс)
-- [API](#api)
-- [Документация](#документация)
-- [Оригинальная библиотека](#оригинальная-библиотека)
+This system extends the base LinkedIn scraper with a comprehensive database backend, web interface, and analytics capabilities. It demonstrates advanced database design, ORM usage, and full-stack development principles.
 
----
+## Core Features
 
-## ✨ Возможности
+- **Relational Database**: SQLite with SQLAlchemy ORM, normalized schema (3NF)
+- **Web Interface**: Flask-based dashboard with search and analytics
+- **Data Deduplication**: Automatic duplicate detection and merging
+- **Change Tracking**: Complete audit trail of profile modifications
+- **Export Capabilities**: JSON, CSV, and Excel formats
+- **REST API**: Programmatic access to all data
 
-### 🗄️ База данных
-- **SQLite с SQLAlchemy ORM** - реляционная БД с нормализованной схемой
-- **Дедупликация** - автоматическое обнаружение дубликатов
-- **История изменений** - отслеживание всех обновлений профилей
-- **Индексы** - оптимизированные запросы
+## Quick Start
 
-### 🌐 Веб-интерфейс (Flask)
-- **Dashboard** - общая статистика и топ-списки
-- **Список профилей** - с пагинацией и фильтрацией
-- **Детальный просмотр** - полная информация о профиле
-- **Поиск** - по имени, компании, локации
-- **Аналитика** - визуализация данных
-
-### 📊 Экспорт и анализ
-- **JSON** - для анализа в Python/R
-- **CSV** - универсальный формат
-- **Excel** - с несколькими вкладками
-- **SQL запросы** - для сложной аналитики
-
-### 🔄 Скрэйпинг
-- Профили LinkedIn с опытом работы и образованием
-- Автоматическая авторизация
-- Сохранение в БД с дедупликацией
-
----
-
-## 🚀 Быстрый старт
-
-### 1. Установка зависимостей
+### Installation
 
 ```bash
 pip install sqlalchemy flask pandas openpyxl selenium requests lxml
 ```
 
-### 2. Инициализация базы данных
+### Initialize Database
 
 ```bash
 python -c "from database.models import get_db_manager; get_db_manager().create_all_tables()"
 ```
 
-### 3. Запуск веб-интерфейса
+### Launch Web Interface
 
 ```bash
 python web/app.py
 ```
 
-Откройте в браузере: **http://127.0.0.1:8080**
+Access at: `http://127.0.0.1:8080`
 
-### 4. Скрэйпинг профилей
+### Run Scraper
 
 ```bash
 python scripts/scrape_to_database.py
 ```
 
----
-
-## 📁 Структура проекта
+## Architecture
 
 ```
 linkedin_scraper/
-├── linkedin_scraper/      # Основная библиотека скрэйпинга
-│   ├── person.py         # Скрэйпинг профилей
-│   ├── company.py        # Скрэйпинг компаний
-│   ├── jobs.py           # Скрэйпинг вакансий
-│   └── actions.py        # Авторизация
-│
-├── database/             # Модуль базы данных
-│   ├── models.py        # SQLAlchemy модели (схема БД)
-│   ├── operations.py    # CRUD, поиск, дедупликация
-│   └── export.py        # Экспорт и миграция данных
-│
-├── web/                 # Веб-интерфейс (Flask)
-│   ├── app.py          # Flask приложение
-│   └── templates/      # HTML шаблоны
-│
-├── scripts/            # Скрипты
-│   ├── scrape_to_database.py  # Скрэйпер → БД
-│   └── test_system.py         # Тестирование
-│
-├── data/               # Данные (не в git)
-│   ├── linkedin_profiles.db   # SQLite БД
-│   └── linkedin_profiles.xlsx # Excel экспорт
-│
-├── docs/               # Документация
-│   └── DATABASE_PROJECT_README.md
-│
-└── samples/            # Примеры использования
+├── database/           # Data layer
+│   ├── models.py      # SQLAlchemy ORM models
+│   ├── operations.py  # Business logic layer
+│   └── export.py      # Data export utilities
+├── web/               # Presentation layer
+│   ├── app.py        # Flask application
+│   └── templates/    # Jinja2 templates
+├── scripts/          # Automation scripts
+├── linkedin_scraper/ # Core scraping library
+└── docs/             # Technical documentation
 ```
 
----
+## Database Schema
 
-## 💻 Использование
+### Tables
 
-### Скрэйпинг с сохранением в БД
+- **persons**: Core profile information with scraping metadata
+- **experiences**: Employment history records
+- **educations**: Academic background
+- **profile_history**: Audit trail for all changes
+
+### Relationships
+
+- One-to-Many: Person → Experiences
+- One-to-Many: Person → Educations
+- One-to-Many: Person → ProfileHistory
+
+### Indexes
+
+Optimized for:
+- Profile lookups by LinkedIn URL
+- Search by name and location
+- Company-based queries
+- Change history retrieval
+
+## Usage
+
+### Profile Scraping
 
 ```python
 from database.operations import ProfileManager
 from linkedin_scraper import Person
 from selenium import webdriver
 
-# Инициализация
-driver = webdriver.Chrome()
 pm = ProfileManager()
+driver = webdriver.Chrome()
 
-# Скрэйпинг профиля
 person = Person("https://linkedin.com/in/username", driver=driver)
 
-# Сохранение в БД (автоматическая дедупликация)
 profile_data = {
     'linkedin_url': "https://linkedin.com/in/username",
     'name': person.name,
@@ -143,93 +114,65 @@ profile_data = {
 pm.save_profile(profile_data, track_changes=True)
 ```
 
-### Поиск профилей
+### Data Retrieval
 
 ```python
-from database.operations import ProfileManager
+from database.operations import ProfileManager, AnalyticsManager
 
 pm = ProfileManager()
+am = AnalyticsManager()
 
-# Поиск по имени
-results = pm.search_profiles(query="John")
-
-# Поиск по компании
-results = pm.search_profiles(company="Google")
-
-# Комбинированный поиск
+# Search profiles
 results = pm.search_profiles(
-    query="John",
+    query="Software Engineer",
     company="Google",
     location="San Francisco"
 )
-```
 
-### Аналитика
-
-```python
-from database.operations import AnalyticsManager
-
-am = AnalyticsManager()
-
-# Топ компаний
+# Get analytics
 top_companies = am.get_top_companies(limit=10)
-
-# Топ локаций
 top_locations = am.get_top_locations(limit=10)
-
-# Статистика по образованию
-edu_stats = am.get_education_stats()
 ```
 
-### Экспорт данных
+### Data Export
 
 ```python
 from database.export import DataExporter
 
 exporter = DataExporter()
 
-# Экспорт в разные форматы
-exporter.export_to_json('export.json')
-exporter.export_to_csv('export.csv')
-exporter.export_to_excel('export.xlsx')
+exporter.export_to_json('profiles.json')
+exporter.export_to_csv('profiles.csv')
+exporter.export_to_excel('profiles.xlsx')
 ```
 
----
+## Web Interface
 
-## 🌐 Веб-интерфейс
+### Dashboard (`/`)
+- Database statistics overview
+- Top companies, locations, and positions
+- Quick export functionality
 
-После запуска `python web/app.py` доступны следующие страницы:
+### Profiles (`/profiles`)
+- Paginated profile listing
+- Direct links to LinkedIn
+- Access to detailed views
 
-### Dashboard - http://127.0.0.1:8080/
-- Общая статистика (профили, опыт, образование)
-- Топ-5 компаний, локаций, должностей
-- Кнопки экспорта данных
+### Search (`/search`)
+- Multi-field search (name, company, location)
+- Real-time filtering
+- Result pagination
 
-### Профили - http://127.0.0.1:8080/profiles
-- Список всех профилей с пагинацией
-- Переход к детальному просмотру
-- Ссылки на LinkedIn
+### Analytics (`/analytics`)
+- Top 10 rankings by category
+- Educational institution statistics
+- Export options for analysis
 
-### Поиск - http://127.0.0.1:8080/search
-- Поиск по имени, компании, локации
-- Фильтрация результатов
+## REST API
 
-### Аналитика - http://127.0.0.1:8080/analytics
-- Топ-10 компаний
-- Топ-10 локаций
-- Топ-10 должностей
-- Топ-10 учебных заведений
-
----
-
-## 🔌 API
-
-### REST API Endpoints
+### Endpoints
 
 #### `GET /api/stats`
-Получить общую статистику БД
-
-**Response:**
 ```json
 {
   "total_persons": 150,
@@ -240,9 +183,6 @@ exporter.export_to_excel('export.xlsx')
 ```
 
 #### `GET /api/profile/<id>`
-Получить данные профиля по ID
-
-**Response:**
 ```json
 {
   "id": 1,
@@ -254,69 +194,54 @@ exporter.export_to_excel('export.xlsx')
 }
 ```
 
----
+## Documentation
 
-## 📖 Документация
+Comprehensive technical documentation available in `/docs/DATABASE_PROJECT_README.md`:
 
-### Полная документация проекта
-Смотрите [docs/DATABASE_PROJECT_README.md](docs/DATABASE_PROJECT_README.md) для:
-- ER-диаграммы базы данных
-- Описания всех таблиц
-- Примеров SQL запросов
-- Детальной API документации
-- Инструкций по использованию
+- ER diagrams
+- Table specifications
+- SQL query examples
+- API reference
+- Performance optimization guidelines
 
-### Схема базы данных
+## Technical Highlights
 
-**Таблицы:**
-- `persons` - основная информация о профилях
-- `experiences` - опыт работы
-- `educations` - образование
-- `profile_history` - история изменений
+### Database Design
+- Third Normal Form (3NF) compliance
+- Composite indexes for optimal query performance
+- Foreign key constraints for referential integrity
+- Soft delete pattern for data retention
 
-**Связи:**
-- One-to-Many между persons и experiences
-- One-to-Many между persons и educations
-- One-to-Many между persons и profile_history
+### Code Quality
+- Type hints throughout
+- Comprehensive docstrings (Google style)
+- Logging instead of print statements
+- Proper exception handling
 
----
+### Architecture Patterns
+- Repository pattern for data access
+- Factory pattern for object creation
+- Singleton pattern for database connections
+- MVC separation in web layer
 
-## 🎓 Демонстрация навыков Database
+## Original Library
 
-Этот проект демонстрирует:
-- ✅ Проектирование нормализованной схемы БД (3NF)
-- ✅ SQLAlchemy ORM и миграции
-- ✅ CRUD операции и транзакции
-- ✅ Индексы и оптимизация запросов
-- ✅ Дедупликация и целостность данных
-- ✅ История изменений (Audit Trail)
-- ✅ REST API и веб-интерфейс
-- ✅ Экспорт данных и аналитика
+This project extends [linkedin-scraper](https://github.com/joeyism/linkedin_scraper) with:
+- Persistent data storage
+- Web-based interface
+- Analytics capabilities
+- Deduplication system
+- Change tracking
 
----
-
-## 📦 Оригинальная библиотека
-
-### Установка
-
-```bash
-pip install linkedin-scraper
-```
-
-### Базовое использование
+### Basic Scraper Usage
 
 ```python
 from linkedin_scraper import Person, actions
 from selenium import webdriver
 
 driver = webdriver.Chrome()
-
-# Авторизация
-email = "your@email.com"
-password = "password"
 actions.login(driver, email, password)
 
-# Скрэйпинг профиля
 person = Person("https://www.linkedin.com/in/username", driver=driver)
 
 print(person.name)
@@ -324,52 +249,25 @@ print(person.job_title)
 print(person.company)
 ```
 
-### Скрэйпинг компаний
+## Development
 
-```python
-from linkedin_scraper import Company
+### Requirements
+- Python 3.9+
+- SQLAlchemy 2.0+
+- Flask 3.0+
+- Selenium 4.0+
 
-company = Company("https://www.linkedin.com/company/google")
-print(company.name)
-print(company.about_us)
+### Testing
+```bash
+python scripts/test_system.py
 ```
 
-### Скрэйпинг вакансий
-
-```python
-from linkedin_scraper import JobSearch, actions
-
-driver = webdriver.Chrome()
-actions.login(driver, email, password)
-
-job_search = JobSearch(driver=driver)
-jobs = job_search.search("Machine Learning Engineer")
-```
-
-**Полная документация оригинальной библиотеки:**
-- GitHub: https://github.com/joeyism/linkedin_scraper
-- PyPI: https://pypi.org/project/linkedin-scraper/
-
----
-
-## 🤝 Contribution
-
-Проект создан как расширение оригинальной библиотеки `linkedin-scraper` с добавлением:
-- Реляционной базы данных
-- Веб-интерфейса
-- Аналитики и экспорта
-- Системы дедупликации
-
-Для демонстрации навыков работы с базами данных в рамках курса Database.
-
----
-
-## 📄 Лицензия
+## License
 
 MIT License
 
----
+## Credits
 
-**Версия:** 2.11.5 (Database Extension)
+Original scraper: [joeyism/linkedin_scraper](https://github.com/joeyism/linkedin_scraper)
 
-**Требования:** Python 3.9+, SQLAlchemy, Flask, Selenium
+Database system and web interface: This repository

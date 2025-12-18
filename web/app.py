@@ -1,20 +1,27 @@
 """
-Flask веб-приложение для LinkedIn Scraper Database
-Dashboard, поиск, просмотр профилей, аналитика
+Flask web application for LinkedIn Scraper Database.
+
+Provides dashboard, search, profile viewing, analytics, and data export
+capabilities through a web interface.
 """
+
 import sys
+import os
+import logging
+
 sys.path.insert(0, '/Users/admin/PycharmProjects/linkedin_scraper')
 
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 from database.models import get_db_manager
 from database.operations import ProfileManager, AnalyticsManager
 from database.export import DataExporter
-import os
+
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 
-# Инициализация менеджеров
+# Initialize managers
 db = get_db_manager()
 pm = ProfileManager()
 am = AnalyticsManager()
@@ -23,7 +30,11 @@ exporter = DataExporter()
 
 @app.route('/')
 def index():
-    """Главная страница - Dashboard"""
+    """
+    Dashboard home page.
+
+    Displays database statistics, top companies, locations, and positions.
+    """
     stats = db.get_stats()
     top_companies = am.get_top_companies(limit=5)
     top_locations = am.get_top_locations(limit=5)
@@ -38,7 +49,11 @@ def index():
 
 @app.route('/profiles')
 def profiles():
-    """Список всех профилей"""
+    """
+    Display paginated list of all profiles.
+
+    Supports pagination with 20 profiles per page.
+    """
     page = request.args.get('page', 1, type=int)
     per_page = 20
 
@@ -60,7 +75,11 @@ def profiles():
 
 @app.route('/profile/<int:profile_id>')
 def profile_detail(profile_id):
-    """Детальная информация о профиле"""
+    """
+    Display detailed profile information.
+
+    Shows full profile data including experiences, educations, and change history.
+    """
     session = db.get_session()
     try:
         from database.models import Person
@@ -81,7 +100,11 @@ def profile_detail(profile_id):
 
 @app.route('/search')
 def search():
-    """Поиск профилей"""
+    """
+    Search profiles by name, company, or location.
+
+    Supports multi-field filtering with up to 100 results.
+    """
     query = request.args.get('q', '')
     company = request.args.get('company', '')
     location = request.args.get('location', '')
@@ -104,7 +127,11 @@ def search():
 
 @app.route('/analytics')
 def analytics():
-    """Страница аналитики"""
+    """
+    Analytics dashboard.
+
+    Displays top companies, locations, positions, and education statistics.
+    """
     top_companies = am.get_top_companies(limit=10)
     top_locations = am.get_top_locations(limit=10)
     top_positions = am.get_top_positions(limit=10)
@@ -119,7 +146,11 @@ def analytics():
 
 @app.route('/export/<format>')
 def export_data(format):
-    """Экспорт данных в различные форматы"""
+    """
+    Export data in various formats.
+
+    Supports JSON, CSV, and Excel exports of all profiles.
+    """
     try:
         if format == 'json':
             filename = 'export.json'
@@ -137,22 +168,31 @@ def export_data(format):
             return send_file(f'../{filename}', as_attachment=True)
 
         else:
-            return jsonify({'error': 'Неподдерживаемый формат'}), 400
+            return jsonify({'error': 'Unsupported format'}), 400
 
     except Exception as e:
+        logger.error(f"Export error: {e}")
         return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/stats')
 def api_stats():
-    """API для получения статистики"""
+    """
+    REST API endpoint for database statistics.
+
+    Returns JSON with counts of persons, experiences, educations, and history records.
+    """
     stats = db.get_stats()
     return jsonify(stats)
 
 
 @app.route('/api/profile/<int:profile_id>')
 def api_profile(profile_id):
-    """API для получения данных профиля"""
+    """
+    REST API endpoint for profile data.
+
+    Returns complete profile information including experiences and educations.
+    """
     session = db.get_session()
     try:
         from database.models import Person
@@ -195,7 +235,11 @@ def api_profile(profile_id):
 
 @app.route('/delete/<int:profile_id>', methods=['POST'])
 def delete_profile(profile_id):
-    """Удалить профиль (мягкое удаление)"""
+    """
+    Soft delete a profile.
+
+    Marks profile as inactive rather than permanently deleting.
+    """
     try:
         pm.delete_profile(profile_id, soft_delete=True)
         return redirect(url_for('profiles'))
@@ -204,19 +248,19 @@ def delete_profile(profile_id):
 
 
 if __name__ == '__main__':
-    # Создаем таблицы если их нет
+    # Create tables if they don't exist
     db.create_all_tables()
 
     print("\n" + "="*60)
     print("LinkedIn Scraper Database - Web Interface")
     print("="*60)
-    print("\nСервер запущен на: http://127.0.0.1:8080")
-    print("\nДоступные страницы:")
+    print("\nServer running at: http://127.0.0.1:8080")
+    print("\nAvailable pages:")
     print("  - http://127.0.0.1:8080/ - Dashboard")
-    print("  - http://127.0.0.1:8080/profiles - Все профили")
-    print("  - http://127.0.0.1:8080/search - Поиск")
-    print("  - http://127.0.0.1:8080/analytics - Аналитика")
-    print("\nДля остановки нажмите Ctrl+C")
+    print("  - http://127.0.0.1:8080/profiles - All profiles")
+    print("  - http://127.0.0.1:8080/search - Search")
+    print("  - http://127.0.0.1:8080/analytics - Analytics")
+    print("\nPress Ctrl+C to stop")
     print("="*60 + "\n")
 
     app.run(debug=True, host='127.0.0.1', port=8080)

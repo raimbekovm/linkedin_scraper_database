@@ -1,28 +1,48 @@
 """
-Операции с базой данных: сохранение, обновление, дедупликация
+Database operations for profile management and analytics.
+
+This module provides high-level interfaces for CRUD operations on LinkedIn profiles,
+including deduplication, change tracking, and analytics queries.
 """
+
 from datetime import datetime
+from typing import Dict, List, Optional, Tuple
+import logging
+
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import joinedload
+
 from database.models import Person, Experience, Education, ProfileHistory, get_db_manager
+
+logger = logging.getLogger(__name__)
 
 
 class ProfileManager:
-    """Менеджер для работы с профилями LinkedIn"""
+    """
+    Manager for LinkedIn profile CRUD operations.
 
-    def __init__(self):
+    Handles profile creation, updates, deduplication, and search operations
+    with optional change tracking for audit trails.
+    """
+
+    def __init__(self) -> None:
+        """Initialize ProfileManager with database connection."""
         self.db = get_db_manager()
 
-    def save_profile(self, person_data, track_changes=True):
+    def save_profile(self, person_data: Dict, track_changes: bool = True) -> Person:
         """
-        Сохранить или обновить профиль с дедупликацией
+        Save or update profile with automatic deduplication.
 
         Args:
-            person_data: dict с данными профиля
-            track_changes: отслеживать ли изменения в истории
+            person_data: Dictionary containing profile data with required 'linkedin_url' key
+            track_changes: Whether to track field changes in profile history
 
         Returns:
-            Person объект
+            Person: Saved or updated Person object
+
+        Raises:
+            ValueError: If linkedin_url is missing from person_data
         """
         session = self.db.get_session()
         try:
@@ -36,29 +56,36 @@ class ProfileManager:
             ).first()
 
             if existing_person:
-                # Обновляем существующий профиль
                 updated_person = self._update_profile(
                     session, existing_person, person_data, track_changes
                 )
                 session.commit()
-                print(f"✓ Профиль обновлен: {updated_person.name}")
+                logger.info(f"Profile updated: {updated_person.name}")
                 return updated_person
             else:
-                # Создаем новый профиль
                 new_person = self._create_profile(session, person_data)
                 session.commit()
-                print(f"✓ Новый профиль создан: {new_person.name}")
+                logger.info(f"New profile created: {new_person.name}")
                 return new_person
 
         except Exception as e:
             session.rollback()
-            print(f"✗ Ошибка при сохранении профиля: {e}")
+            logger.error(f"Error saving profile: {e}")
             raise
         finally:
             session.close()
 
-    def _create_profile(self, session, data):
-        """Создать новый профиль"""
+    def _create_profile(self, session, data: Dict) -> Person:
+        """
+        Create new profile with associated experiences and educations.
+
+        Args:
+            session: SQLAlchemy session
+            data: Profile data dictionary
+
+        Returns:
+            Person: Newly created Person object
+        """
         person = Person(
             linkedin_url=data['linkedin_url'],
             name=data.get('name', 'Unknown'),
@@ -104,8 +131,19 @@ class ProfileManager:
 
         return person
 
-    def _update_profile(self, session, person, data, track_changes):
-        """Обновить существующий профиль"""
+    def _update_profile(self, session, person: Person, data: Dict, track_changes: bool) -> Person:
+        """
+        Update existing profile with new data and optionally track changes.
+
+        Args:
+            session: SQLAlchemy session
+            person: Existing Person object to update
+            data: New profile data
+            track_changes: Whether to record changes in profile_history
+
+        Returns:
+            Person: Updated Person object
+        """
         changes = []
 
         # Проверяем изменения в основных полях
@@ -173,8 +211,16 @@ class ProfileManager:
 
         return person
 
-    def get_profile_by_url(self, linkedin_url):
-        """Получить профиль по URL"""
+    def get_profile_by_url(self, linkedin_url: str) -> Optional[Person]:
+        """
+        Retrieve profile by LinkedIn URL.
+
+        Args:
+            linkedin_url: LinkedIn profile URL
+
+        Returns:
+            Person object if found, None otherwise
+        """
         session = self.db.get_session()
         try:
             return session.query(Person).filter(
@@ -183,8 +229,25 @@ class ProfileManager:
         finally:
             session.close()
 
-    def search_profiles(self, query=None, company=None, location=None, limit=50):
-        """Поиск профилей по различным критериям"""
+    def search_profiles(
+        self,
+        query: Optional[str] = None,
+        company: Optional[str] = None,
+        location: Optional[str] = None,
+        limit: int = 50
+    ) -> List[Person]:
+        """
+        Search profiles by multiple criteria.
+
+        Args:
+            query: Search term for profile names
+            company: Filter by company name
+            location: Filter by location
+            limit: Maximum number of results to return
+
+        Returns:
+            List of Person objects matching the criteria
+        """
         session = self.db.get_session()
         try:
             q = session.query(Person).filter(Person.is_active == True)
@@ -200,8 +263,16 @@ class ProfileManager:
         finally:
             session.close()
 
-    def get_profile_history(self, person_id):
-        """Получить историю изменений профиля"""
+    def get_profile_history(self, person_id: int) -> List[ProfileHistory]:
+        """
+        Get change history for a profile.
+
+        Args:
+            person_id: Profile ID
+
+        Returns:
+            List of ProfileHistory records ordered by change date (newest first)
+        """
         session = self.db.get_session()
         try:
             return session.query(ProfileHistory).filter(
@@ -210,9 +281,16 @@ class ProfileManager:
         finally:
             session.close()
 
-    def get_all_profiles(self, active_only=True):
-        """Получить все профили"""
-        from sqlalchemy.orm import joinedload
+    def get_all_profiles(self, active_only: bool = True) -> List[Person]:
+        """
+        Retrieve all profiles with eager loading of relationships.
+
+        Args:
+            active_only: If True, return only active (non-deleted) profiles
+
+        Returns:
+            List of Person objects with experiences and educations loaded
+        """
         session = self.db.get_session()
         try:
             q = session.query(Person).options(
@@ -221,15 +299,23 @@ class ProfileManager:
             )
             if active_only:
                 q = q.filter(Person.is_active == True)
-            # Используем expunge_all чтобы объекты можно было использовать вне сессии
             profiles = q.all()
             session.expunge_all()
             return profiles
         finally:
             session.close()
 
-    def delete_profile(self, person_id, soft_delete=True):
-        """Удалить профиль (мягкое или жесткое удаление)"""
+    def delete_profile(self, person_id: int, soft_delete: bool = True) -> None:
+        """
+        Delete or deactivate a profile.
+
+        Args:
+            person_id: Profile ID to delete
+            soft_delete: If True, mark as inactive; if False, permanently delete
+
+        Raises:
+            None: Logs warning if profile not found
+        """
         session = self.db.get_session()
         try:
             person = session.query(Person).get(person_id)
@@ -237,25 +323,39 @@ class ProfileManager:
                 if soft_delete:
                     person.is_active = False
                     session.commit()
-                    print(f"✓ Профиль {person.name} деактивирован")
+                    logger.info(f"Profile deactivated: {person.name}")
                 else:
                     session.delete(person)
                     session.commit()
-                    print(f"✓ Профиль {person.name} удален")
+                    logger.info(f"Profile permanently deleted: {person.name}")
             else:
-                print(f"✗ Профиль с ID {person_id} не найден")
+                logger.warning(f"Profile with ID {person_id} not found")
         finally:
             session.close()
 
 
 class AnalyticsManager:
-    """Менеджер для аналитики данных"""
+    """
+    Manager for analytics and aggregation queries.
 
-    def __init__(self):
+    Provides methods for retrieving statistics about profiles,
+    companies, locations, and educational institutions.
+    """
+
+    def __init__(self) -> None:
+        """Initialize AnalyticsManager with database connection."""
         self.db = get_db_manager()
 
-    def get_top_companies(self, limit=10):
-        """Топ компаний по количеству профилей"""
+    def get_top_companies(self, limit: int = 10) -> List[Tuple[str, int]]:
+        """
+        Get top companies by profile count.
+
+        Args:
+            limit: Maximum number of companies to return
+
+        Returns:
+            List of tuples (company_name, profile_count)
+        """
         session = self.db.get_session()
         try:
             return session.query(
@@ -272,8 +372,16 @@ class AnalyticsManager:
         finally:
             session.close()
 
-    def get_top_locations(self, limit=10):
-        """Топ локаций"""
+    def get_top_locations(self, limit: int = 10) -> List[Tuple[str, int]]:
+        """
+        Get top locations by profile count.
+
+        Args:
+            limit: Maximum number of locations to return
+
+        Returns:
+            List of tuples (location, profile_count)
+        """
         session = self.db.get_session()
         try:
             return session.query(
@@ -290,8 +398,16 @@ class AnalyticsManager:
         finally:
             session.close()
 
-    def get_top_positions(self, limit=10):
-        """Топ должностей"""
+    def get_top_positions(self, limit: int = 10) -> List[Tuple[str, int]]:
+        """
+        Get top job positions by profile count.
+
+        Args:
+            limit: Maximum number of positions to return
+
+        Returns:
+            List of tuples (job_title, profile_count)
+        """
         session = self.db.get_session()
         try:
             return session.query(
@@ -308,8 +424,13 @@ class AnalyticsManager:
         finally:
             session.close()
 
-    def get_education_stats(self):
-        """Статистика по образованию"""
+    def get_education_stats(self) -> List[Tuple[str, int]]:
+        """
+        Get statistics on educational institutions.
+
+        Returns:
+            List of tuples (institution_name, count) ordered by frequency
+        """
         session = self.db.get_session()
         try:
             return session.query(
