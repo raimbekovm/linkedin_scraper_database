@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - LinkedIn Scraper DB{% endblock %}
+
+{% block content %}
+<h1 style="margin: 20px 0;">Dashboard</h1>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <h3>Всего профилей</h3>
+        <div class="number">{{ stats.total_persons }}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Активных профилей</h3>
+        <div class="number">{{ stats.active_persons }}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Опыт работы</h3>
+        <div class="number">{{ stats.total_experiences }}</div>
+    </div>
+    <div class="stat-card">
+        <h3>Образование</h3>
+        <div class="number">{{ stats.total_educations }}</div>
+    </div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px;">
+    <div class="card">
+        <h2>Топ компании</h2>
+        {% for company, count in top_companies %}
+        <div class="list-item">
+            <strong>{{ company or 'Не указано' }}</strong>
+            <span style="float: right; color: #0a66c2;">{{ count }} профилей</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="card">
+        <h2>Топ локации</h2>
+        {% for location, count in top_locations %}
+        <div class="list-item">
+            <strong>{{ location }}</strong>
+            <span style="float: right; color: #0a66c2;">{{ count }} профилей</span>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="card">
+        <h2>Топ должности</h2>
+        {% for position, count in top_positions %}
+        <div class="list-item">
+            <strong>{{ position or 'Не указано' }}</strong>
+            <span style="float: right; color: #0a66c2;">{{ count }} профилей</span>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <h2>Экспорт данных</h2>
+    <p style="margin-bottom: 15px;">Скачать все данные в удобном формате:</p>
+    <div style="display: flex; gap: 10px;">
+        <a href="/export/json" class="btn">Экспорт в JSON</a>
+        <a href="/export/csv" class="btn btn-secondary">Экспорт в CSV</a>
+        <a href="/export/excel" class="btn">Экспорт в Excel</a>
+    </div>
+</div>
+{% endblock %}

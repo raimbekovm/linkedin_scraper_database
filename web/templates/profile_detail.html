@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}{{ person.name }} - LinkedIn Scraper DB{% endblock %}
+
+{% block content %}
+<div style="margin: 20px 0;">
+    <a href="/profiles" style="color: #0a66c2; text-decoration: none;">← Назад к списку</a>
+</div>
+
+<div class="card">
+    <h1 style="margin-bottom: 10px;">{{ person.name }}</h1>
+    <p style="font-size: 18px; color: #666; margin-bottom: 5px;">
+        <strong>{{ person.current_job_title or 'Должность не указана' }}</strong>
+    </p>
+    <p style="font-size: 16px; color: #666; margin-bottom: 15px;">
+        {{ person.current_company or 'Компания не указана' }}
+    </p>
+    <p style="color: #999;">📍 {{ person.location or 'Локация не указана' }}</p>
+
+    <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
+        <p style="font-size: 12px; color: #999;">
+            <strong>LinkedIn:</strong> <a href="{{ person.linkedin_url }}" target="_blank">{{ person.linkedin_url }}</a><br>
+            <strong>Первый скрэйп:</strong> {{ person.first_scraped_at.strftime('%d.%m.%Y %H:%M') }}<br>
+            <strong>Последний скрэйп:</strong> {{ person.last_scraped_at.strftime('%d.%m.%Y %H:%M') }}<br>
+            <strong>Количество скрэйпов:</strong> {{ person.scrape_count }}
+        </p>
+    </div>
+</div>
+
+{% if person.about %}
+<div class="card">
+    <h2>О себе</h2>
+    <p style="white-space: pre-wrap;">{{ person.about }}</p>
+</div>
+{% endif %}
+
+<div class="card">
+    <h2>Опыт работы ({{ person.experiences|length }})</h2>
+    {% for exp in person.experiences %}
+    <div class="list-item">
+        <h3 style="margin-bottom: 5px;">{{ exp.position_title }}</h3>
+        <p style="color: #666; margin-bottom: 5px;"><strong>{{ exp.company_name }}</strong></p>
+        <p style="font-size: 14px; color: #999;">
+            {% if exp.from_date and exp.to_date %}
+            {{ exp.from_date }} - {{ exp.to_date }}
+            {% if exp.duration %} ({{ exp.duration }}){% endif %}
+            {% endif %}
+            {% if exp.location %} · {{ exp.location }}{% endif %}
+        </p>
+        {% if exp.description %}
+        <p style="margin-top: 10px; font-size: 14px;">{{ exp.description }}</p>
+        {% endif %}
+    </div>
+    {% else %}
+    <p style="color: #999;">Нет данных об опыте работы</p>
+    {% endfor %}
+</div>
+
+<div class="card">
+    <h2>Образование ({{ person.educations|length }})</h2>
+    {% for edu in person.educations %}
+    <div class="list-item">
+        <h3 style="margin-bottom: 5px;">{{ edu.institution_name }}</h3>
+        {% if edu.degree %}
+        <p style="color: #666; margin-bottom: 5px;">{{ edu.degree }}</p>
+        {% endif %}
+        <p style="font-size: 14px; color: #999;">
+            {% if edu.from_date and edu.to_date %}
+            {{ edu.from_date }} - {{ edu.to_date }}
+            {% endif %}
+        </p>
+        {% if edu.description %}
+        <p style="margin-top: 10px; font-size: 14px;">{{ edu.description }}</p>
+        {% endif %}
+    </div>
+    {% else %}
+    <p style="color: #999;">Нет данных об образовании</p>
+    {% endfor %}
+</div>
+
+{% if history %}
+<div class="card">
+    <h2>История изменений</h2>
+    {% for h in history %}
+    <div class="list-item">
+        <p><strong>{{ h.changed_field }}</strong> изменено {{ h.changed_at.strftime('%d.%m.%Y %H:%M') }}</p>
+        <p style="font-size: 14px; color: #666;">
+            Было: {{ h.old_value or 'не указано' }}<br>
+            Стало: {{ h.new_value or 'не указано' }}
+        </p>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+{% endblock %}

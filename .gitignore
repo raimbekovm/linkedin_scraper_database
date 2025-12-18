@@ -1,0 +1,64 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.pyc
+*.so
+.Python
+.venv/
+venv/
+.env/
+ENV/
+env/
+
+# Package
+linkedin_user_scraper.egg-info
+linkedin_scraper.egg-info
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Data files - ignore generated data but keep structure
+data/*.xlsx
+data/*.csv
+data/*.json
+data/*.db
+!data/.gitkeep
+
+# Exports
+export*.xlsx
+export*.csv
+export*.json
+test_export*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Chromedriver
+chromedriver
+
+# Credentials
+creds.json
+
+# Logs
+*.log
+
+# Archives
+*.zip
+
+# Temporary files
+*.tmp
+*.bak
+*~
+scrape.py

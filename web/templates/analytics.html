@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}Аналитика - LinkedIn Scraper DB{% endblock %}
+
+{% block content %}
+<h1 style="margin: 20px 0;">Аналитика и статистика</h1>
+
+<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px;">
+    <div class="card">
+        <h2>Топ-10 компаний</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Компания</th>
+                    <th style="text-align: right;">Профилей</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for company, count in top_companies %}
+                <tr>
+                    <td>{{ company or 'Не указано' }}</td>
+                    <td style="text-align: right;"><strong>{{ count }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Топ-10 локаций</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Локация</th>
+                    <th style="text-align: right;">Профилей</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for location, count in top_locations %}
+                <tr>
+                    <td>{{ location }}</td>
+                    <td style="text-align: right;"><strong>{{ count }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Топ-10 должностей</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Должность</th>
+                    <th style="text-align: right;">Профилей</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for position, count in top_positions %}
+                <tr>
+                    <td>{{ position or 'Не указано' }}</td>
+                    <td style="text-align: right;"><strong>{{ count }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card">
+        <h2>Топ-10 учебных заведений</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Учебное заведение</th>
+                    <th style="text-align: right;">Выпускников</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for institution, count in education_stats %}
+                <tr>
+                    <td>{{ institution }}</td>
+                    <td style="text-align: right;"><strong>{{ count }}</strong></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 20px;">
+    <h2>Экспорт данных для анализа</h2>
+    <p style="margin-bottom: 15px;">Скачайте данные для дальнейшего анализа в Excel, Python или R:</p>
+    <div style="display: flex; gap: 10px;">
+        <a href="/export/json" class="btn">JSON для Python/R</a>
+        <a href="/export/csv" class="btn btn-secondary">CSV</a>
+        <a href="/export/excel" class="btn">Excel с вкладками</a>
+    </div>
+</div>
+{% endblock %}

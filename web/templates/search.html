@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Поиск - LinkedIn Scraper DB{% endblock %}
+
+{% block content %}
+<h1 style="margin: 20px 0;">Поиск профилей</h1>
+
+<div class="card">
+    <form method="GET" action="/search" class="search-form">
+        <input type="text" name="q" placeholder="Имя..." value="{{ query }}">
+        <input type="text" name="company" placeholder="Компания..." value="{{ company }}">
+        <input type="text" name="location" placeholder="Локация..." value="{{ location }}">
+        <button type="submit" class="btn">Поиск</button>
+    </form>
+</div>
+
+{% if results %}
+<div class="card">
+    <h2>Результаты поиска ({{ results|length }})</h2>
+    {% for person in results %}
+    <div class="profile-card">
+        <div class="profile-info" style="flex: 1;">
+            <h3><a href="/profile/{{ person.id }}" style="color: #0a66c2; text-decoration: none;">{{ person.name }}</a></h3>
+            <p><strong>{{ person.current_job_title or 'Должность не указана' }}</strong> в {{ person.current_company or 'Компания не указана' }}</p>
+            <p>📍 {{ person.location or 'Локация не указана' }}</p>
+        </div>
+        <div>
+            <a href="/profile/{{ person.id }}" class="btn" style="font-size: 12px; padding: 8px 15px;">Подробнее</a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% elif query or company or location %}
+<div class="card">
+    <p style="text-align: center; color: #999; padding: 40px 0;">
+        По вашему запросу ничего не найдено
+    </p>
+</div>
+{% else %}
+<div class="card">
+    <p style="text-align: center; color: #999; padding: 40px 0;">
+        Введите параметры поиска
+    </p>
+</div>
+{% endif %}
+{% endblock %}
