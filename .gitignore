@@ -23,16 +23,16 @@ build/
 *.swp
 *.swo
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
+# Database - Keep for portfolio
+# *.db
+# *.sqlite
+# *.sqlite3
 
 # Data files - ignore generated data but keep structure
 data/*.xlsx
 data/*.csv
 data/*.json
-data/*.db
+# data/*.db (keep database for portfolio)
 !data/.gitkeep
 
 # Exports
