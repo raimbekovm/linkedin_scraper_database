@@ -21,27 +21,39 @@ This system extends the base LinkedIn scraper with a comprehensive database back
 
 ## Quick Start
 
-### Installation
+### 1. Clone Repository
+
+```bash
+git clone https://github.com/raimbekovm/linkedin_scraper_database.git
+cd linkedin_scraper_database
+```
+
+### 2. Create Virtual Environment
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+```
+
+### 3. Install Dependencies
 
 ```bash
 pip install sqlalchemy flask pandas openpyxl selenium requests lxml
 ```
 
-### Initialize Database
-
-```bash
-python -c "from database.models import get_db_manager; get_db_manager().create_all_tables()"
-```
-
-### Launch Web Interface
+### 4. Launch Web Interface
 
 ```bash
 python web/app.py
 ```
 
-Access at: `http://127.0.0.1:8080`
+**Access at:** `http://127.0.0.1:8080`
 
-### Run Scraper
+The database already contains sample profiles for demonstration.
+
+### Optional: Run Scraper
+
+To scrape additional profiles (requires LinkedIn login):
 
 ```bash
 python scripts/scrape_to_database.py
