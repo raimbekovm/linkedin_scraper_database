@@ -39,7 +39,7 @@ data/*.json
 export*.xlsx
 export*.csv
 export*.json
-test_export*
+/test_export.*
 
 # OS
 .DS_Store
@@ -50,6 +50,7 @@ chromedriver
 
 # Credentials
 creds.json
+.env
 
 # Logs
 *.log

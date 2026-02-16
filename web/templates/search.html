@@ -7,9 +7,9 @@
 
 <div class="card">
     <form method="GET" action="/search" class="search-form">
-        <input type="text" name="q" placeholder="Имя..." value="{{ query }}">
-        <input type="text" name="company" placeholder="Компания..." value="{{ company }}">
-        <input type="text" name="location" placeholder="Локация..." value="{{ location }}">
+        <input type="text" name="q" placeholder="Имя..." value="{{ query }}" maxlength="200">
+        <input type="text" name="company" placeholder="Компания..." value="{{ company }}" maxlength="200">
+        <input type="text" name="location" placeholder="Локация..." value="{{ location }}" maxlength="200">
         <button type="submit" class="btn">Поиск</button>
     </form>
 </div>

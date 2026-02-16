@@ -12,14 +12,22 @@ import logging
 sys.path.insert(0, '/Users/admin/PycharmProjects/linkedin_scraper')
 
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
+from markupsafe import escape
 from database.models import get_db_manager
 from database.operations import ProfileManager, AnalyticsManager
 from database.export import DataExporter
 
 logger = logging.getLogger(__name__)
 
+MAX_SEARCH_LENGTH = 200
+
+
+def sanitize_input(value: str, max_length: int = MAX_SEARCH_LENGTH) -> str:
+    """Strip whitespace and truncate user input to a safe length."""
+    return value.strip()[:max_length] if value else ''
+
 app = Flask(__name__)
-app.config['SECRET_KEY'] = 'your-secret-key-here'
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', os.urandom(32).hex())
 
 # Initialize managers
 db = get_db_manager()
@@ -54,17 +62,17 @@ def profiles():
 
     Supports pagination with 20 profiles per page.
     """
-    page = request.args.get('page', 1, type=int)
     per_page = 20
 
     all_profiles = pm.get_all_profiles(active_only=True)
+    total_pages = max(1, (len(all_profiles) + per_page - 1) // per_page)
 
-    # Простая пагинация
+    page = request.args.get('page', 1, type=int)
+    page = max(1, min(page, total_pages))
+
     start = (page - 1) * per_page
     end = start + per_page
     profiles_page = all_profiles[start:end]
-
-    total_pages = (len(all_profiles) + per_page - 1) // per_page
 
     return render_template('profiles.html',
                            profiles=profiles_page,
@@ -105,9 +113,9 @@ def search():
 
     Supports multi-field filtering with up to 100 results.
     """
-    query = request.args.get('q', '')
-    company = request.args.get('company', '')
-    location = request.args.get('location', '')
+    query = sanitize_input(request.args.get('q', ''))
+    company = sanitize_input(request.args.get('company', ''))
+    location = sanitize_input(request.args.get('location', ''))
 
     results = []
     if query or company or location:
