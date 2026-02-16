@@ -14,6 +14,7 @@ import logging
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from linkedin_scraper import Person
+from linkedin_scraper.actions import login
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 
@@ -21,6 +22,73 @@ from database.operations import ProfileManager
 from database.models import get_db_manager
 
 logger = logging.getLogger(__name__)
+
+LOGIN_CHECK_INTERVAL = 5
+LOGIN_TIMEOUT = 120
+
+
+def create_driver():
+    """Create and return a configured Chrome WebDriver."""
+    chrome_options = Options()
+    chrome_options.add_argument("--no-sandbox")
+    chrome_options.add_argument("--disable-dev-shm-usage")
+    return webdriver.Chrome(options=chrome_options)
+
+
+def authenticate(driver):
+    """
+    Authenticate with LinkedIn using env vars or manual login.
+
+    Tries in order:
+      1. LINKEDIN_EMAIL + LINKEDIN_PASSWORD (auto-login)
+      2. LINKEDIN_COOKIE (session cookie)
+      3. Manual login with smart wait (detects login automatically)
+    """
+    print("\n" + "=" * 60)
+    print("LINKEDIN AUTHENTICATION")
+    print("=" * 60)
+
+    email = os.environ.get('LINKEDIN_EMAIL')
+    password = os.environ.get('LINKEDIN_PASSWORD')
+    cookie = os.environ.get('LINKEDIN_COOKIE')
+
+    if email and password:
+        print("Auto-login with LINKEDIN_EMAIL / LINKEDIN_PASSWORD...")
+        login(driver, email=email, password=password)
+        print("Login successful.")
+    elif cookie:
+        print("Auto-login with LINKEDIN_COOKIE...")
+        login(driver, cookie=cookie)
+        print("Cookie set. Verifying session...")
+        driver.get("https://www.linkedin.com/feed/")
+        time.sleep(3)
+    else:
+        print("No credentials found in environment variables.")
+        print("Set LINKEDIN_EMAIL + LINKEDIN_PASSWORD or LINKEDIN_COOKIE for auto-login.")
+        print()
+        print("Falling back to manual login...")
+        driver.get("https://www.linkedin.com/login")
+        print(f"Log in in the browser. Timeout: {LOGIN_TIMEOUT} seconds.")
+
+        elapsed = 0
+        while elapsed < LOGIN_TIMEOUT:
+            time.sleep(LOGIN_CHECK_INTERVAL)
+            elapsed += LOGIN_CHECK_INTERVAL
+            try:
+                from linkedin_scraper.objects import Scraper
+                checker = Scraper.__new__(Scraper)
+                checker.driver = driver
+                checker.WAIT_FOR_ELEMENT_TIMEOUT = 2
+                if checker.is_signed_in():
+                    print("Login detected!")
+                    break
+            except Exception:
+                pass
+            remaining = LOGIN_TIMEOUT - elapsed
+            if remaining > 0:
+                print(f"Waiting for login... {remaining}s remaining")
+        else:
+            print("WARNING: Login timeout reached. Proceeding anyway...")
 
 
 def scrape_profile_to_db(profile_url: str, driver, pm: ProfileManager, track_changes: bool = True):
@@ -116,30 +184,10 @@ def main():
     print(f"  - Education records: {stats['total_educations']}")
     print(f"  - History records: {stats['total_history_records']}")
 
-    # Setup Chrome
-    chrome_options = Options()
-    chrome_options.add_argument("--no-sandbox")
-    chrome_options.add_argument("--disable-dev-shm-usage")
-
-    driver = webdriver.Chrome(options=chrome_options)
+    driver = create_driver()
 
     try:
-        print("\n" + "="*60)
-        print("LINKEDIN AUTHENTICATION")
-        print("="*60)
-        print("1. Log in to LinkedIn in the opened browser")
-        print("2. You have 60 seconds to complete login")
-        print("3. Scraping will begin automatically")
-        print("="*60 + "\n")
-
-        # Open LinkedIn
-        driver.get("https://www.linkedin.com/login")
-
-        # Wait 60 seconds for manual login
-        print("Waiting for login (60 seconds)...")
-        for i in range(60, 0, -10):
-            print(f"{i} seconds remaining...")
-            time.sleep(10)
+        authenticate(driver)
 
         # List of profiles to scrape (11 profiles for portfolio)
         profiles_to_scrape = [
