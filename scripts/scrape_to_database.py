@@ -253,20 +253,17 @@ def main():
     try:
         authenticate(driver)
 
-        # List of profiles to scrape (11 profiles for portfolio)
+        # List of profiles to scrape — add LinkedIn profile URLs here
         profiles_to_scrape = [
-            "https://www.linkedin.com/in/sultan-baisbekov-a079b4362/",
-            "https://www.linkedin.com/in/nurbolot-piridinov/",
-            "https://www.linkedin.com/in/amantai-akunov-52363b227/",
-            "https://www.linkedin.com/in/baktygul-tazhamatova-389048208/",
-            "https://www.linkedin.com/in/farzin-amonov-42812035a/",
-            "https://www.linkedin.com/in/toichubek-pazylov/",
-            "https://www.linkedin.com/in/aktan-toksumbaev-298131229/",
-            "https://www.linkedin.com/in/aidarkazybekov/",
-            "https://www.linkedin.com/in/bekzhan-eldiiar-uulu-4319a027a/",
-            "https://www.linkedin.com/in/baitur-suiunbaev-142180303/",
-            "https://www.linkedin.com/in/eldarsatyndiev/",
+            # "https://www.linkedin.com/in/username1/",
+            # "https://www.linkedin.com/in/username2/",
         ]
+
+        if not profiles_to_scrape:
+            print("No profiles to scrape. Add URLs to profiles_to_scrape list.")
+            print("Or use search_and_scrape.py for bulk search by name.")
+            driver.quit()
+            return
 
         print("\n" + "="*60)
         print(f"STARTING SCRAPING ({len(profiles_to_scrape)} profiles)")

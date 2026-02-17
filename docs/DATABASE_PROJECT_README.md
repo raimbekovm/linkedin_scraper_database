@@ -237,7 +237,7 @@ Flow:
 ### Bulk Search Pipeline
 
 ```bash
-python scripts/search_and_scrape.py data/alumni_clean.xlsx --school-id 316375
+python scripts/search_and_scrape.py data/names.xlsx --school-id 316375
 ```
 
 Flow:
@@ -326,11 +326,11 @@ python web/app.py
 ```json
 {
   "id": 9,
-  "name": "Kanat Botbaev",
-  "linkedin_url": "https://www.linkedin.com/in/kanat-botbaev-22a211142/",
-  "location": "Kyrgyzstan",
-  "current_job_title": "Director",
-  "current_company": "Full-time",
+  "name": "John Doe",
+  "linkedin_url": "https://www.linkedin.com/in/johndoe/",
+  "location": "San Francisco",
+  "current_job_title": "Software Engineer",
+  "current_company": "Google",
   "about": "...",
   "scrape_count": 1,
   "experiences": [
@@ -346,10 +346,10 @@ python web/app.py
   ],
   "educations": [
     {
-      "institution_name": "AUCA",
-      "degree": "Bachelor of Arts",
-      "from_date": "1993",
-      "to_date": "1997"
+      "institution_name": "Stanford University",
+      "degree": "Bachelor of Science",
+      "from_date": "2010",
+      "to_date": "2014"
     }
   ]
 }
@@ -445,14 +445,13 @@ pytest tests/ --cov=database --cov=web -v
 
 ## SQL Examples
 
-### Find all AUCA alumni
+### Find all alumni of a specific university
 
 ```sql
 SELECT DISTINCT p.name, p.current_company, p.current_job_title
 FROM persons p
 JOIN educations e ON p.id = e.person_id
-WHERE e.institution_name LIKE '%AUCA%'
-   OR e.institution_name LIKE '%American University%Central Asia%'
+WHERE e.institution_name LIKE '%Stanford%'
 ORDER BY p.name;
 ```
 
@@ -501,7 +500,7 @@ ORDER BY last_scraped_at DESC;
 SELECT ph.changed_field, ph.old_value, ph.new_value, ph.changed_at
 FROM profile_history ph
 JOIN persons p ON ph.person_id = p.id
-WHERE p.name = 'Kanat Botbaev'
+WHERE p.name = 'John Doe'
 ORDER BY ph.changed_at DESC;
 ```
 
