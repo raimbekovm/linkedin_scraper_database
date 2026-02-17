@@ -1,285 +1,265 @@
 # LinkedIn Scraper Database System
 
-Enterprise-grade LinkedIn profile scraping system with relational database storage and web interface.
+LinkedIn profile scraping system with database storage, web interface, and bulk search pipeline.
 
 [![Python 3.9+](https://img.shields.io/badge/python-3.9+-blue.svg)](https://www.python.org/downloads/)
 [![SQLite](https://img.shields.io/badge/database-SQLite-green.svg)](https://www.sqlite.org/)
 [![Flask](https://img.shields.io/badge/web-Flask-lightgrey.svg)](https://flask.palletsprojects.com/)
+[![Tests](https://img.shields.io/badge/tests-66%20passed-brightgreen.svg)]()
 
 ## Overview
 
-This system extends the base LinkedIn scraper with a comprehensive database backend, web interface, and analytics capabilities. It demonstrates advanced database design, ORM usage, and full-stack development principles.
+System for scraping LinkedIn profiles by name from an Excel/CSV file, storing results in SQLite with full relationship mapping, and providing a web interface for search and analytics.
 
-## Core Features
+## Features
 
+- **Bulk Search**: Read names from Excel/CSV, search LinkedIn, scrape profiles automatically
+- **School Filter**: Filter LinkedIn search by university ID
+- **Profile Photos**: Download and store profile avatars
 - **Relational Database**: SQLite with SQLAlchemy ORM, normalized schema (3NF)
-- **Web Interface**: Flask-based dashboard with search and analytics
-- **Data Deduplication**: Automatic duplicate detection and merging
-- **Change Tracking**: Complete audit trail of profile modifications
-- **Export Capabilities**: JSON, CSV, and Excel formats
+- **Deduplication**: Automatic duplicate detection by LinkedIn URL
+- **Change Tracking**: Audit trail of all profile modifications
+- **Web Interface**: Flask dashboard with search, analytics, and export
+- **Database Merge**: Combine multiple databases into one with deduplication
+- **Export**: JSON, CSV, Excel formats
 - **REST API**: Programmatic access to all data
+- **Test Suite**: 66 pytest tests covering models, operations, export, and web routes
 
 ## Quick Start
 
-### 1. Clone Repository
+### 1. Clone and Setup
 
 ```bash
 git clone https://github.com/raimbekovm/linkedin_scraper_database.git
 cd linkedin_scraper_database
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
 ```
 
-### 2. Create Virtual Environment
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
-```
-
-### 3. Install Dependencies
-
-```bash
-pip install sqlalchemy flask pandas openpyxl selenium requests lxml
-```
-
-### 4. Launch Web Interface
+### 2. Launch Web Interface
 
 ```bash
 python web/app.py
 ```
 
-**Access at:** `http://127.0.0.1:8080`
+Open http://127.0.0.1:8080 — the database already contains sample profiles.
 
-The database already contains sample profiles for demonstration.
-
-### Optional: Run Scraper
-
-To scrape additional profiles (requires LinkedIn login):
+### 3. Scrape Profiles by Name
 
 ```bash
-python scripts/scrape_to_database.py
+# Search LinkedIn for names from a file
+python scripts/search_and_scrape.py data/alumni.csv
+
+# With school filter
+python scripts/search_and_scrape.py data/alumni.xlsx --school-id 316375
+
+# Process specific range
+python scripts/search_and_scrape.py data/alumni.xlsx --skip 100 --max-names 50 --school-id 316375
+```
+
+### 4. Run Tests
+
+```bash
+pytest tests/ -v
 ```
 
 ## Architecture
 
 ```
 linkedin_scraper/
-├── database/           # Data layer
-│   ├── models.py      # SQLAlchemy ORM models
-│   ├── operations.py  # Business logic layer
-│   └── export.py      # Data export utilities
-├── web/               # Presentation layer
-│   ├── app.py        # Flask application
-│   └── templates/    # Jinja2 templates
-├── scripts/          # Automation scripts
-├── linkedin_scraper/ # Core scraping library
-└── docs/             # Technical documentation
+├── database/                # Data layer
+│   ├── models.py           # SQLAlchemy ORM models (Person, Experience, Education, ProfileHistory)
+│   ├── operations.py       # ProfileManager (CRUD, dedup, search) & AnalyticsManager
+│   └── export.py           # DataExporter (JSON/CSV/Excel) & DataMigrator
+├── web/                    # Presentation layer
+│   ├── app.py             # Flask app (port 8080) with input validation
+│   └── templates/         # Jinja2 templates (dashboard, profiles, search, analytics)
+├── linkedin_scraper/       # Core scraping library
+│   ├── person.py          # Person profile scraper (Selenium)
+│   ├── person_search.py   # LinkedIn people search with school filter
+│   ├── objects.py         # Data classes (Experience, Education, Contact, Scraper base)
+│   ├── actions.py         # Authentication (email/password, cookie, manual login)
+│   ├── company.py         # Company scraper
+│   └── job_search.py      # Job search
+├── scripts/               # Automation
+│   ├── search_and_scrape.py   # Main pipeline: Excel/CSV -> search -> scrape -> DB
+│   ├── scrape_to_database.py  # Direct URL scraping with photo download
+│   ├── merge_databases.py     # Merge multiple databases into one
+│   └── test_system.py         # System verification script
+├── tests/                 # pytest test suite (66 tests)
+│   ├── conftest.py        # Fixtures with in-memory SQLite
+│   ├── test_models.py     # ORM model tests
+│   ├── test_operations.py # ProfileManager & AnalyticsManager tests
+│   ├── test_export.py     # Export functionality tests
+│   └── test_web.py        # Flask route & input validation tests
+├── data/                  # Data storage
+│   ├── linkedin_profiles.db   # SQLite database
+│   └── photos/                # Downloaded profile photos
+└── docs/                  # Technical documentation
 ```
+
+## Search Pipeline
+
+The main pipeline reads names from an Excel/CSV file, searches LinkedIn for each person, and scrapes found profiles into the database.
+
+### Command Reference
+
+```bash
+python scripts/search_and_scrape.py <file> [options]
+```
+
+| Argument | Default | Description |
+|----------|---------|-------------|
+| `file` | required | Path to CSV or Excel file with names |
+| `--school-id` | none | LinkedIn school ID to filter search |
+| `--skip` | 0 | Skip first N names |
+| `--max-names` | 0 (all) | Max number of names to process |
+| `--limit` | 1 | Search results to scrape per name |
+| `--search-delay` | 5 | Seconds between searches |
+| `--scrape-delay` | 3 | Seconds between scrapes |
+
+### Input File Format
+
+CSV or Excel with a column named `name` (case-insensitive), or uses the first column:
+
+```csv
+name
+John Doe
+Jane Smith
+```
+
+### Authentication
+
+The scraper tries authentication in this order:
+
+1. **Environment variables** (auto-login):
+   ```bash
+   export LINKEDIN_EMAIL="your@email.com"
+   export LINKEDIN_PASSWORD="yourpassword"
+   ```
+2. **Session cookie**:
+   ```bash
+   export LINKEDIN_COOKIE="your_li_at_cookie_value"
+   ```
+3. **Manual login**: Opens browser, waits for you to log in (120 sec timeout)
+
+### What Gets Scraped
+
+For each found profile:
+- Name, location, job title, company, about
+- Full employment history (position, company, dates, duration, description)
+- Education history (institution, degree, dates)
+- Profile photo (saved to `data/photos/`)
+
+## Merging Databases
+
+When scraping is done in parts (or by multiple people), merge the results:
+
+```bash
+python scripts/merge_databases.py part1.db part2.db part3.db -o data/merged.db
+```
+
+The merge script deduplicates by LinkedIn URL, keeps the most recent version of each profile, and consolidates photos.
 
 ## Database Schema
 
 ### Tables
 
-- **persons**: Core profile information with scraping metadata
-- **experiences**: Employment history records
-- **educations**: Academic background
-- **profile_history**: Audit trail for all changes
+| Table | Description | Key Fields |
+|-------|-------------|------------|
+| `persons` | Core profile data | linkedin_url (unique), name, location, job_title, company, about, photo_path |
+| `experiences` | Employment history | person_id (FK), position_title, company_name, dates, duration |
+| `educations` | Academic background | person_id (FK), institution_name, degree, dates |
+| `profile_history` | Change audit trail | person_id (FK), changed_field, old_value, new_value, changed_at |
 
 ### Relationships
 
-- One-to-Many: Person → Experiences
-- One-to-Many: Person → Educations
-- One-to-Many: Person → ProfileHistory
-
-### Indexes
-
-Optimized for:
-- Profile lookups by LinkedIn URL
-- Search by name and location
-- Company-based queries
-- Change history retrieval
-
-## Usage
-
-### Profile Scraping
-
-```python
-from database.operations import ProfileManager
-from linkedin_scraper import Person
-from selenium import webdriver
-
-pm = ProfileManager()
-driver = webdriver.Chrome()
-
-person = Person("https://linkedin.com/in/username", driver=driver)
-
-profile_data = {
-    'linkedin_url': "https://linkedin.com/in/username",
-    'name': person.name,
-    'location': person.location,
-    'job_title': person.job_title,
-    'company': person.company,
-    'about': person.about,
-    'experiences': [...],
-    'educations': [...]
-}
-
-pm.save_profile(profile_data, track_changes=True)
-```
-
-### Data Retrieval
-
-```python
-from database.operations import ProfileManager, AnalyticsManager
-
-pm = ProfileManager()
-am = AnalyticsManager()
-
-# Search profiles
-results = pm.search_profiles(
-    query="Software Engineer",
-    company="Google",
-    location="San Francisco"
-)
-
-# Get analytics
-top_companies = am.get_top_companies(limit=10)
-top_locations = am.get_top_locations(limit=10)
-```
-
-### Data Export
-
-```python
-from database.export import DataExporter
-
-exporter = DataExporter()
-
-exporter.export_to_json('profiles.json')
-exporter.export_to_csv('profiles.csv')
-exporter.export_to_excel('profiles.xlsx')
-```
+- Person -> Experiences (1:N, cascade delete)
+- Person -> Educations (1:N, cascade delete)
+- Person -> ProfileHistory (1:N, cascade delete)
 
 ## Web Interface
 
-### Dashboard (`/`)
-- Database statistics overview
-- Top companies, locations, and positions
-- Quick export functionality
-
-### Profiles (`/profiles`)
-- Paginated profile listing
-- Direct links to LinkedIn
-- Access to detailed views
-
-### Search (`/search`)
-- Multi-field search (name, company, location)
-- Real-time filtering
-- Result pagination
-
-### Analytics (`/analytics`)
-- Top 10 rankings by category
-- Educational institution statistics
-- Export options for analysis
+| Route | Description |
+|-------|-------------|
+| `/` | Dashboard with stats, top companies/locations, export buttons |
+| `/profiles` | Paginated profile listing (20 per page) |
+| `/profile/<id>` | Full profile detail with experiences, education, change history |
+| `/search` | Multi-field search (name, company, location) |
+| `/analytics` | Top 10 companies, locations, positions, education stats |
 
 ## REST API
 
-### Endpoints
-
-#### `GET /api/stats`
+### GET /api/stats
 ```json
 {
-  "total_persons": 150,
-  "total_experiences": 450,
-  "total_educations": 200,
-  "active_persons": 148
+  "total_persons": 17,
+  "total_experiences": 76,
+  "total_educations": 36,
+  "active_persons": 17
 }
 ```
 
-#### `GET /api/profile/<id>`
+### GET /api/profile/\<id\>
 ```json
 {
   "id": 1,
   "name": "John Doe",
-  "linkedin_url": "https://...",
+  "linkedin_url": "https://www.linkedin.com/in/johndoe/",
   "current_job_title": "Software Engineer",
   "experiences": [...],
   "educations": [...]
 }
 ```
 
-## Documentation
+### Export
 
-Comprehensive technical documentation available in `/docs/DATABASE_PROJECT_README.md`:
+- `GET /export/json` — Download all profiles as JSON
+- `GET /export/csv` — Download as CSV
+- `GET /export/excel` — Download as Excel (multi-sheet)
 
-- ER diagrams
-- Table specifications
-- SQL query examples
-- API reference
-- Performance optimization guidelines
-
-## Technical Highlights
-
-### Database Design
-- Third Normal Form (3NF) compliance
-- Composite indexes for optimal query performance
-- Foreign key constraints for referential integrity
-- Soft delete pattern for data retention
-
-### Code Quality
-- Type hints throughout
-- Comprehensive docstrings (Google style)
-- Logging instead of print statements
-- Proper exception handling
-
-### Architecture Patterns
-- Repository pattern for data access
-- Factory pattern for object creation
-- Singleton pattern for database connections
-- MVC separation in web layer
-
-## Original Library
-
-This project extends [linkedin-scraper](https://github.com/joeyism/linkedin_scraper) with:
-- Persistent data storage
-- Web-based interface
-- Analytics capabilities
-- Deduplication system
-- Change tracking
-
-### Basic Scraper Usage
+## Python API
 
 ```python
-from linkedin_scraper import Person, actions
-from selenium import webdriver
+from database.operations import ProfileManager, AnalyticsManager
+from database.export import DataExporter
 
-driver = webdriver.Chrome()
-actions.login(driver, email, password)
+pm = ProfileManager()
+am = AnalyticsManager()
 
-person = Person("https://www.linkedin.com/in/username", driver=driver)
+# Search profiles
+results = pm.search_profiles(query="John", company="Google", location="San Francisco")
 
-print(person.name)
-print(person.job_title)
-print(person.company)
+# Analytics
+top_companies = am.get_top_companies(limit=10)
+
+# Export
+exporter = DataExporter()
+exporter.export_to_json('profiles.json')
+exporter.export_to_excel('profiles.xlsx')
 ```
 
 ## Development
 
 ### Requirements
-- Python 3.9+
-- SQLAlchemy 2.0+
-- Flask 3.0+
-- Selenium 4.0+
 
-### Testing
+- Python 3.9+
+- Google Chrome (for Selenium scraping)
+- LinkedIn account (for authentication)
+
+### Running Tests
+
 ```bash
-python scripts/test_system.py
+pytest tests/ -v
 ```
+
+Tests use in-memory SQLite and don't require Chrome or LinkedIn.
+
+## Credits
+
+Based on [joeyism/linkedin_scraper](https://github.com/joeyism/linkedin_scraper), extended with database system, web interface, bulk search pipeline, and merge tools.
 
 ## License
 
 MIT License
-
-## Credits
-
-Original scraper: [joeyism/linkedin_scraper](https://github.com/joeyism/linkedin_scraper)
-
-Database system and web interface: This repository
