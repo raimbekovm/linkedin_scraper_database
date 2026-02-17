@@ -38,13 +38,14 @@ class PersonSearch(Scraper):
         self.driver = driver
         self.WAIT_FOR_ELEMENT_TIMEOUT = 10
 
-    def search(self, query: str, limit: int = 5) -> List[SearchResult]:
+    def search(self, query: str, limit: int = 5, school_id: str = None) -> List[SearchResult]:
         """
         Search LinkedIn for people matching the query.
 
         Args:
             query: Search term (e.g. a person's full name)
             limit: Maximum number of results to return
+            school_id: LinkedIn school ID to filter by (e.g. "316375" for AUCA)
 
         Returns:
             List of SearchResult with name, linkedin_url, and headline
@@ -54,7 +55,9 @@ class PersonSearch(Scraper):
             return []
 
         encoded = urllib.parse.quote(query)
-        url = f"{SEARCH_URL}?keywords={encoded}&origin=GLOBAL_SEARCH_HEADER"
+        url = f"{SEARCH_URL}?keywords={encoded}&origin=FACETED_SEARCH"
+        if school_id:
+            url += f"&schoolFilter=%5B%22{school_id}%22%5D"
         self.driver.get(url)
 
         sleep(3)

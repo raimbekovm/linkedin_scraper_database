@@ -121,6 +121,18 @@ def main():
         help="How many search results to scrape per name (default: 1)",
     )
     parser.add_argument(
+        '--skip', type=int, default=0,
+        help="Skip first N names (default: 0)",
+    )
+    parser.add_argument(
+        '--max-names', type=int, default=0,
+        help="Max number of names to process after skip (default: 0 = all)",
+    )
+    parser.add_argument(
+        '--school-id', type=str, default=None,
+        help="LinkedIn school ID to filter search (e.g. 316375 for AUCA)",
+    )
+    parser.add_argument(
         '--search-delay', type=float, default=DELAY_BETWEEN_SEARCHES,
         help=f"Seconds to wait between searches (default: {DELAY_BETWEEN_SEARCHES})",
     )
@@ -140,12 +152,19 @@ def main():
         print("ERROR: No names found in the file.")
         sys.exit(1)
 
+    if args.skip > 0:
+        names = names[args.skip:]
+    if args.max_names > 0:
+        names = names[:args.max_names]
+
     print("=" * 60)
     print("LINKEDIN ALUMNI SEARCH & SCRAPE")
     print("=" * 60)
     print(f"File: {args.file}")
-    print(f"Names loaded: {len(names)}")
+    print(f"Names to process: {len(names)}")
     print(f"Results per name: {args.limit}")
+    if args.school_id:
+        print(f"School filter: {args.school_id}")
 
     # Initialize database
     db = get_db_manager()
@@ -178,7 +197,7 @@ def main():
             print(f"\n[{idx}/{len(names)}] Searching: {name}...", end=" ")
             searched += 1
 
-            results = searcher.search(name, limit=args.limit)
+            results = searcher.search(name, limit=args.limit, school_id=args.school_id)
 
             if not results:
                 print("NOT FOUND")
