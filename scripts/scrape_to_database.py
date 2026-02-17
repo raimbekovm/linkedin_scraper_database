@@ -9,14 +9,19 @@ import time
 import sys
 import os
 import logging
+import re
+import requests
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from linkedin_scraper import Person
 from linkedin_scraper.actions import login
+from selenium.webdriver.common.by import By
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.chrome.service import Service
+from webdriver_manager.chrome import ChromeDriverManager
 
 from database.operations import ProfileManager
 from database.models import get_db_manager
@@ -32,7 +37,8 @@ def create_driver():
     chrome_options = Options()
     chrome_options.add_argument("--no-sandbox")
     chrome_options.add_argument("--disable-dev-shm-usage")
-    return webdriver.Chrome(options=chrome_options)
+    service = Service(ChromeDriverManager().install())
+    return webdriver.Chrome(service=service, options=chrome_options)
 
 
 def authenticate(driver):
@@ -91,6 +97,55 @@ def authenticate(driver):
             print("WARNING: Login timeout reached. Proceeding anyway...")
 
 
+PHOTOS_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data', 'photos')
+
+
+def get_profile_photo_url(driver):
+    """Extract profile photo URL from the current LinkedIn profile page."""
+    try:
+        img = driver.find_element(
+            By.CSS_SELECTOR,
+            'img.pv-top-card-profile-picture__image--show'
+        )
+        src = img.get_attribute('src')
+        if src and 'ghost' not in src and 'data:image' not in src:
+            return src
+    except Exception:
+        pass
+    try:
+        img = driver.find_element(
+            By.CSS_SELECTOR,
+            '.pv-top-card-profile-picture img'
+        )
+        src = img.get_attribute('src')
+        if src and 'ghost' not in src and 'data:image' not in src:
+            return src
+    except Exception:
+        pass
+    return None
+
+
+def download_photo(photo_url: str, linkedin_url: str) -> str:
+    """Download profile photo and return the saved file path relative to project."""
+    os.makedirs(PHOTOS_DIR, exist_ok=True)
+
+    # Extract username from LinkedIn URL for filename
+    match = re.search(r'/in/([^/?]+)', linkedin_url)
+    username = match.group(1) if match else 'unknown'
+    filename = f"{username}.jpg"
+    filepath = os.path.join(PHOTOS_DIR, filename)
+
+    try:
+        resp = requests.get(photo_url, timeout=15)
+        resp.raise_for_status()
+        with open(filepath, 'wb') as f:
+            f.write(resp.content)
+        return f"data/photos/{filename}"
+    except Exception as e:
+        logger.warning(f"Failed to download photo: {e}")
+        return None
+
+
 def scrape_profile_to_db(profile_url: str, driver, pm: ProfileManager, track_changes: bool = True):
     """
     Scrape LinkedIn profile and save to database.
@@ -107,8 +162,9 @@ def scrape_profile_to_db(profile_url: str, driver, pm: ProfileManager, track_cha
     try:
         print(f"\nScraping: {profile_url}")
 
-        # Scrape profile
+        # Scrape profile (skip contacts to avoid redirect to connections page)
         person = Person(profile_url, driver=driver, scrape=False)
+        person.scrape_contacts = False
         person.scrape(close_on_complete=False)
 
         # Prepare data for saving
@@ -136,6 +192,12 @@ def scrape_profile_to_db(profile_url: str, driver, pm: ProfileManager, track_cha
                     'description': edu.description
                 })
 
+        # Download profile photo
+        photo_path = None
+        photo_url = get_profile_photo_url(driver)
+        if photo_url:
+            photo_path = download_photo(photo_url, profile_url)
+
         profile_data = {
             'linkedin_url': profile_url,
             'name': person.name,
@@ -143,6 +205,7 @@ def scrape_profile_to_db(profile_url: str, driver, pm: ProfileManager, track_cha
             'job_title': getattr(person, 'job_title', None),
             'company': getattr(person, 'company', None),
             'about': getattr(person, 'about', None),
+            'photo_path': photo_path,
             'experiences': experiences,
             'educations': educations
         }
@@ -155,6 +218,7 @@ def scrape_profile_to_db(profile_url: str, driver, pm: ProfileManager, track_cha
         print(f"  - Company: {saved_person.current_company}")
         print(f"  - Experience: {len(experiences)} positions")
         print(f"  - Education: {len(educations)} institutions")
+        print(f"  - Photo: {photo_path or 'not available'}")
         print(f"  - Scrape count: {saved_person.scrape_count}")
 
         return saved_person
