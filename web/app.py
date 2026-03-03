@@ -13,6 +13,7 @@ sys.path.insert(0, '/Users/admin/PycharmProjects/linkedin_scraper')
 
 from flask import Flask, render_template, request, jsonify, send_file, redirect, url_for
 from markupsafe import escape
+from sqlalchemy import func
 from database.models import get_db_manager
 from database.operations import ProfileManager, AnalyticsManager
 from database.export import DataExporter
@@ -48,11 +49,20 @@ def index():
     top_locations = am.get_top_locations(limit=5)
     top_positions = am.get_top_positions(limit=5)
 
+    # Get last scrape date
+    from database.models import Person
+    session = db.get_session()
+    try:
+        last_scrape = session.query(func.max(Person.last_scraped_at)).scalar()
+    finally:
+        session.close()
+
     return render_template('index.html',
                            stats=stats,
                            top_companies=top_companies,
                            top_locations=top_locations,
-                           top_positions=top_positions)
+                           top_positions=top_positions,
+                           last_scrape=last_scrape)
 
 
 @app.route('/profiles')

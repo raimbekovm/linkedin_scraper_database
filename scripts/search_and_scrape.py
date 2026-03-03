@@ -140,6 +140,10 @@ def main():
         '--scrape-delay', type=float, default=DELAY_BETWEEN_SCRAPES,
         help=f"Seconds to wait between scrapes (default: {DELAY_BETWEEN_SCRAPES})",
     )
+    parser.add_argument(
+        '--rescrape', action='store_true', default=False,
+        help="Re-scrape profiles that already exist in the database (default: skip them)",
+    )
     args = parser.parse_args()
 
     if not os.path.exists(args.file):
@@ -165,6 +169,8 @@ def main():
     print(f"Results per name: {args.limit}")
     if args.school_id:
         print(f"School filter: {args.school_id}")
+    if args.rescrape:
+        print(f"Mode: RESCRAPE (will update existing profiles)")
 
     # Initialize database
     db = get_db_manager()
@@ -213,10 +219,12 @@ def main():
 
                 # Check if already in DB
                 existing = pm.get_profile_by_url(url)
-                if existing:
+                if existing and not args.rescrape:
                     print(f"  SKIP: Already in DB (ID: {existing.id}, scrape_count: {existing.scrape_count})")
                     skipped += 1
                     continue
+                elif existing and args.rescrape:
+                    print(f"  RESCRAPE: Updating existing profile (ID: {existing.id})")
 
                 # Scrape the profile
                 print(f"  Scraping...", end=" ")

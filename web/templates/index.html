@@ -22,6 +22,16 @@
         <h3>Образование</h3>
         <div class="number">{{ stats.total_educations }}</div>
     </div>
+    <div class="stat-card">
+        <h3>Последний скрэйп</h3>
+        <div class="number" style="font-size: 18px;">
+            {% if last_scrape %}
+                {{ last_scrape.strftime('%d.%m.%Y %H:%M') }}
+            {% else %}
+                —
+            {% endif %}
+        </div>
+    </div>
 </div>
 
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 20px;">

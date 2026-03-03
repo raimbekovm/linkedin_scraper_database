@@ -15,7 +15,8 @@
             <p style="font-size: 12px; color: #999;">
                 Опыт: {{ person.experiences|length }} мест |
                 Образование: {{ person.educations|length }} учебных заведений |
-                Скрэйпов: {{ person.scrape_count }}
+                Скрэйпов: {{ person.scrape_count }} |
+                Последний скрэйп: {{ person.last_scraped_at.strftime('%d.%m.%Y %H:%M') }}
             </p>
         </div>
         <div style="display: flex; flex-direction: column; gap: 5px;">
