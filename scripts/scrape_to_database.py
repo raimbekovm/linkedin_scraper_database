@@ -10,6 +10,7 @@ import sys
 import os
 import logging
 import re
+import signal
 import requests
 
 # Add project root to path
@@ -30,6 +31,15 @@ logger = logging.getLogger(__name__)
 
 LOGIN_CHECK_INTERVAL = 5
 LOGIN_TIMEOUT = 120
+SCRAPE_TIMEOUT = 120  # Max seconds per profile
+
+
+class ScrapeTimeoutError(Exception):
+    pass
+
+
+def _timeout_handler(signum, frame):
+    raise ScrapeTimeoutError("Profile scraping timed out")
 
 
 def create_driver():
@@ -162,10 +172,18 @@ def scrape_profile_to_db(profile_url: str, driver, pm: ProfileManager, track_cha
     try:
         print(f"\nScraping: {profile_url}")
 
-        # Scrape profile (skip contacts to avoid redirect to connections page)
-        person = Person(profile_url, driver=driver, scrape=False)
-        person.scrape_contacts = False
-        person.scrape(close_on_complete=False)
+        # Set a timeout to prevent hanging on a single profile
+        old_handler = signal.signal(signal.SIGALRM, _timeout_handler)
+        signal.alarm(SCRAPE_TIMEOUT)
+
+        try:
+            # Scrape profile (skip contacts to avoid redirect to connections page)
+            person = Person(profile_url, driver=driver, scrape=False)
+            person.scrape_contacts = False
+            person.scrape(close_on_complete=False)
+        finally:
+            signal.alarm(0)  # Cancel the alarm
+            signal.signal(signal.SIGALRM, old_handler)
 
         # Prepare data for saving
         experiences = []
@@ -225,6 +243,10 @@ def scrape_profile_to_db(profile_url: str, driver, pm: ProfileManager, track_cha
 
         return saved_person
 
+    except ScrapeTimeoutError:
+        print(f"TIMEOUT: Scraping took too long for {profile_url} (>{SCRAPE_TIMEOUT}s), skipping...")
+        logger.warning(f"Scrape timeout for {profile_url}")
+        return None
     except Exception as e:
         print(f"ERROR: Scraping failed for {profile_url}: {e}")
         logger.exception("Scraping error")
