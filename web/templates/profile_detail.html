@@ -16,6 +16,9 @@
         {{ person.current_company or 'Компания не указана' }}
     </p>
     <p style="color: #999;">📍 {{ person.location or 'Локация не указана' }}</p>
+    {% if person.email %}
+    <p style="margin-top: 5px;">✉️ <a href="mailto:{{ person.email }}">{{ person.email }}</a></p>
+    {% endif %}
 
     <div style="margin-top: 20px; padding-top: 20px; border-top: 1px solid #e0e0e0;">
         <p style="font-size: 12px; color: #999;">

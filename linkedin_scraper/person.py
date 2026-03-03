@@ -41,6 +41,7 @@ class Person(Scraper):
         self.accomplishments = accomplishments or []
         self.also_viewed_urls = []
         self.contacts = contacts or []
+        self.email = None
 
         if driver is None:
             try:
@@ -314,6 +315,70 @@ class Person(Scraper):
                 # Skip this education entry if elements are missing
                 continue
 
+    def get_contact_info(self):
+        """Extract email from the Contact Info overlay page."""
+        try:
+            url = os.path.join(self.linkedin_url, "overlay/contact-info/")
+            self.driver.get(url)
+            self.wait(2)
+
+            # Find the contact info overlay container
+            try:
+                container = self.driver.find_element(
+                    By.CSS_SELECTOR, "section.artdeco-container-card"
+                )
+            except NoSuchElementException:
+                return
+
+            # Strategy 1: Look for ci-email section inside the overlay
+            try:
+                email_section = container.find_element(By.CSS_SELECTOR, "section.ci-email")
+                mailto = email_section.find_element(By.CSS_SELECTOR, "a[href^='mailto:']")
+                email = mailto.get_attribute("href").replace("mailto:", "").strip()
+                if email:
+                    self.email = email
+                    return
+            except NoSuchElementException:
+                pass
+
+            # Strategy 2: Look for pv-contact-info sections with email content
+            try:
+                sections = container.find_elements(
+                    By.CSS_SELECTOR, "section.pv-contact-info__contact-type"
+                )
+                for section in sections:
+                    text = section.text.lower()
+                    if "email" not in text:
+                        continue
+                    # Found email section — extract mailto link
+                    links = section.find_elements(By.CSS_SELECTOR, "a[href^='mailto:']")
+                    for link in links:
+                        email = link.get_attribute("href").replace("mailto:", "").strip()
+                        if email:
+                            self.email = email
+                            return
+                    # Fallback: look for text with @
+                    for span in section.find_elements(By.TAG_NAME, "span"):
+                        if "@" in span.text and "." in span.text:
+                            self.email = span.text.strip()
+                            return
+            except NoSuchElementException:
+                pass
+
+            # Strategy 3: Look for any mailto inside overlay that looks like personal email
+            try:
+                mailtos = container.find_elements(By.CSS_SELECTOR, "a[href^='mailto:']")
+                for mailto in mailtos:
+                    email = mailto.get_attribute("href").replace("mailto:", "").strip()
+                    if email and "@" in email:
+                        self.email = email
+                        return
+            except NoSuchElementException:
+                pass
+
+        except Exception:
+            pass
+
     def get_name_and_location(self):
         top_panel = self.driver.find_element(By.XPATH, "//*[@class='mt2 relative']")
         self.name = top_panel.find_element(By.TAG_NAME, "h1").text
@@ -360,6 +425,9 @@ class Person(Scraper):
 
         # get education
         self.get_educations()
+
+        # get email from contact info
+        self.get_contact_info()
 
         driver.get(self.linkedin_url)
 
@@ -458,8 +526,9 @@ class Person(Scraper):
             return None
 
     def __repr__(self):
-        return "<Person {name}\n\nAbout\n{about}\n\nExperience\n{exp}\n\nEducation\n{edu}\n\nInterest\n{int}\n\nAccomplishments\n{acc}\n\nContacts\n{conn}>".format(
+        return "<Person {name}\n\nEmail\n{email}\n\nAbout\n{about}\n\nExperience\n{exp}\n\nEducation\n{edu}\n\nInterest\n{int}\n\nAccomplishments\n{acc}\n\nContacts\n{conn}>".format(
             name=self.name,
+            email=self.email,
             about=self.about,
             exp=self.experiences,
             edu=self.educations,

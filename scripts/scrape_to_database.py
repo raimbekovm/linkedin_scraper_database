@@ -205,6 +205,7 @@ def scrape_profile_to_db(profile_url: str, driver, pm: ProfileManager, track_cha
             'job_title': getattr(person, 'job_title', None),
             'company': getattr(person, 'company', None),
             'about': getattr(person, 'about', None),
+            'email': getattr(person, 'email', None),
             'photo_path': photo_path,
             'experiences': experiences,
             'educations': educations
@@ -218,6 +219,7 @@ def scrape_profile_to_db(profile_url: str, driver, pm: ProfileManager, track_cha
         print(f"  - Company: {saved_person.current_company}")
         print(f"  - Experience: {len(experiences)} positions")
         print(f"  - Education: {len(educations)} institutions")
+        print(f"  - Email: {getattr(person, 'email', None) or 'not available'}")
         print(f"  - Photo: {photo_path or 'not available'}")
         print(f"  - Scrape count: {saved_person.scrape_count}")
 

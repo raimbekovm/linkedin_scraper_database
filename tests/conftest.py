@@ -59,6 +59,7 @@ def sample_profile_data():
         'job_title': 'Software Engineer',
         'company': 'Google',
         'about': 'Experienced software engineer.',
+        'email': 'john.doe@example.com',
         'experiences': [
             {
                 'position_title': 'Software Engineer',

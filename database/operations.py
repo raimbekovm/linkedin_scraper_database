@@ -94,6 +94,7 @@ class ProfileManager:
             current_company=data.get('company'),
             about=data.get('about'),
             photo_path=data.get('photo_path'),
+            email=data.get('email'),
             first_scraped_at=datetime.now(),
             last_scraped_at=datetime.now(),
             scrape_count=1
@@ -154,7 +155,8 @@ class ProfileManager:
             'current_job_title': data.get('job_title'),
             'current_company': data.get('company'),
             'about': data.get('about'),
-            'photo_path': data.get('photo_path')
+            'photo_path': data.get('photo_path'),
+            'email': data.get('email')
         }
 
         for field, new_value in fields_to_check.items():

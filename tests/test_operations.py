@@ -18,6 +18,7 @@ class TestSaveProfile:
         assert person.current_job_title == 'Software Engineer'
         assert person.current_company == 'Google'
         assert person.about == 'Experienced software engineer.'
+        assert person.email == 'john.doe@example.com'
         assert person.scrape_count == 1
         assert person.is_active is True
 
@@ -103,6 +104,34 @@ class TestDeduplication:
         assert 'name' in changed_fields
         assert 'current_job_title' in changed_fields
         session.close()
+
+    def test_update_tracks_email_changes(self, pm, db_manager):
+        url = 'https://linkedin.com/in/emailtrack'
+        pm.save_profile({
+            'linkedin_url': url,
+            'name': 'Email User',
+            'email': 'old@example.com',
+        })
+        pm.save_profile({
+            'linkedin_url': url,
+            'name': 'Email User',
+            'email': 'new@example.com',
+        }, track_changes=True)
+
+        session = db_manager.get_session()
+        person = session.query(Person).filter_by(linkedin_url=url).first()
+        assert person.email == 'new@example.com'
+        history = session.query(ProfileHistory).filter_by(person_id=person.id).all()
+        changed_fields = {h.changed_field for h in history}
+        assert 'email' in changed_fields
+        session.close()
+
+    def test_save_profile_without_email(self, pm):
+        person = pm.save_profile({
+            'linkedin_url': 'https://linkedin.com/in/noemail',
+            'name': 'No Email',
+        })
+        assert person.email is None
 
     def test_update_no_tracking(self, pm, db_manager):
         url = 'https://linkedin.com/in/notrack'

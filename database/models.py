@@ -45,6 +45,7 @@ class Person(Base):
     current_company = Column(String(300))
     about = Column(Text)
     photo_path = Column(String(500))
+    email = Column(String(300))
 
     first_scraped_at = Column(DateTime, default=datetime.now, nullable=False)
     last_scraped_at = Column(DateTime, default=datetime.now, onupdate=datetime.now, nullable=False)
